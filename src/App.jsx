@@ -16,12 +16,7 @@ function App() {
   return (
     <UserProvider>
       <OfflineProvider>
-        <Router
-          future={{
-            v7_startTransition: true,
-            v7_relativeSplatPath: true,
-          }}
-        >
+        <Router>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
