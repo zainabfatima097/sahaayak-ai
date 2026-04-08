@@ -1,97 +1,116 @@
 import React, { useState, useEffect } from 'react';
-import { useUserContext } from '../../context/UserContext';
 import { useNavigate } from 'react-router-dom';
+import { useUserContext } from '../../context/UserContext';
 import { 
-  User, MapPin, Briefcase, DollarSign, Globe, Volume2, Save, 
-  Trash2, Edit2, CheckCircle, XCircle, Bell, Shield, 
-  Smartphone, Languages, Eye, Type, LogOut, HelpCircle,
-  Award, Clock, Database, Download
+  User, Mail, Phone, MapPin, Briefcase, DollarSign, Globe, 
+  Volume2, Save, Edit2, Camera, Bell, Shield, Smartphone, 
+  Languages, Award, Clock, Database, LogOut, ChevronRight,
+  CheckCircle, AlertCircle, Moon, Sun, Heart, Sprout, GraduationCap,
+  Calendar, TrendingUp, MessageCircle, Star, Zap, Settings
 } from 'lucide-react';
-import { getChatHistory, initDB } from '../services/offline/indexedDB';
+import { getChatHistory } from '../services/offline/indexedDB';
 
 const ProfilePage = () => {
-  const { userContext, updateUserContext } = useUserContext();
   const navigate = useNavigate();
+  const { userContext, updateUserContext } = useUserContext();
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState(userContext);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    location: '',
+    occupation: 'farmer',
+    income_level: 'below_poverty_line',
+    language: 'Hindi',
+    voice_preferred: true,
+    notifications_enabled: true,
+    dark_mode: false
+  });
   const [stats, setStats] = useState({
     totalQueries: 0,
     savedSchemes: 0,
-    daysActive: 1
-  });
-  const [notifications, setNotifications] = useState({
-    schemeAlerts: true,
-    weatherAlerts: true,
-    healthReminders: false
+    daysActive: 1,
+    questionsAsked: 0,
+    lastActive: null
   });
 
   useEffect(() => {
+    loadUserData();
     loadStats();
   }, []);
 
+  const loadUserData = () => {
+    setFormData({
+      name: userContext.name || '',
+      email: userContext.email || '',
+      phone: userContext.phone || '',
+      location: userContext.location || '',
+      occupation: userContext.occupation || 'farmer',
+      income_level: userContext.income_level || 'below_poverty_line',
+      language: userContext.language || 'Hindi',
+      voice_preferred: userContext.voice_preferred !== false,
+      notifications_enabled: userContext.notifications_enabled !== false,
+      dark_mode: userContext.dark_mode || false
+    });
+  };
+
   const loadStats = async () => {
     const history = await getChatHistory();
-    setStats(prev => ({
-      ...prev,
+    const lastActive = localStorage.getItem('lastActive');
+    
+    setStats({
       totalQueries: history.length,
-      savedSchemes: history.filter(m => m.text?.includes('scheme')).length
-    }));
+      savedSchemes: history.filter(m => m.text?.includes('scheme') || m.text?.includes('योजना')).length,
+      daysActive: Math.floor((Date.now() - (parseInt(localStorage.getItem('joinDate')) || Date.now())) / (1000 * 60 * 60 * 24)) + 1,
+      questionsAsked: history.filter(m => m.type === 'user').length,
+      lastActive: lastActive ? new Date(parseInt(lastActive)) : new Date()
+    });
   };
 
   const handleSave = async () => {
-    await updateUserContext(formData);
-    setIsEditing(false);
-    // Show success message
-    alert('Profile updated successfully!');
-  };
-
-  const clearHistory = async () => {
-    if (confirm('Are you sure? This will delete all your chat history. This action cannot be undone.')) {
-      const db = await initDB();
-      const tx = db.transaction('chat_history', 'readwrite');
-      await tx.objectStore('chat_history').clear();
-      await tx.done;
-      alert('Chat history cleared successfully');
-      loadStats();
+    setIsLoading(true);
+    try {
+      await updateUserContext(formData);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to save profile:', error);
+      alert('Failed to save profile. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const exportData = async () => {
-    const history = await getChatHistory();
-    const data = {
-      profile: userContext,
-      chatHistory: history,
-      exportDate: new Date().toISOString()
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `sahaayak_data_${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleLogout = () => {
+    if (window.confirm('Are you sure you want to logout?')) {
+      updateUserContext({ isAuthenticated: false });
+      navigate('/');
+    }
   };
 
   const occupations = [
-    { value: 'farmer', label: 'किसान / Farmer', icon: '🌾' },
-    { value: 'labor', label: 'मजदूर / Labor', icon: '🔨' },
-    { value: 'homemaker', label: 'गृहिणी / Homemaker', icon: '🏠' },
-    { value: 'student', label: 'विद्यार्थी / Student', icon: '📚' },
-    { value: 'teacher', label: 'शिक्षक / Teacher', icon: '👨‍🏫' },
-    { value: 'small_business', label: 'छोटा व्यवसाय / Small Business', icon: '🏪' },
-    { value: 'other', label: 'अन्य / Other', icon: '👤' }
+    { value: 'farmer', label: 'किसान / Farmer', icon: '🌾', description: 'Agriculture' },
+    { value: 'labor', label: 'मजदूर / Labor', icon: '🔨', description: 'Daily Wage' },
+    { value: 'homemaker', label: 'गृहिणी / Homemaker', icon: '🏠', description: 'Household' },
+    { value: 'student', label: 'विद्यार्थी / Student', icon: '📚', description: 'Education' },
+    { value: 'teacher', label: 'शिक्षक / Teacher', icon: '👨‍🏫', description: 'Education' },
+    { value: 'small_business', label: 'छोटा व्यवसाय / Small Business', icon: '🏪', description: 'Business' },
+    { value: 'other', label: 'अन्य / Other', icon: '👤', description: 'Other' }
   ];
 
   const incomeLevels = [
-    { value: 'below_poverty_line', label: 'BPL (Below Poverty Line)', icon: '📉' },
-    { value: 'low', label: 'Low Income', icon: '📊' },
-    { value: 'middle', label: 'Middle Income', icon: '📈' },
-    { value: 'above_average', label: 'Above Average', icon: '💰' }
+    { value: 'below_poverty_line', label: 'BPL (Below Poverty Line)', icon: '📉', color: 'text-red-600' },
+    { value: 'low', label: 'Low Income', icon: '📊', color: 'text-orange-600' },
+    { value: 'middle', label: 'Middle Income', icon: '📈', color: 'text-yellow-600' },
+    { value: 'above_average', label: 'Above Average', icon: '💰', color: 'text-green-600' }
   ];
 
   const languages = [
     'Hindi', 'English', 'Marathi', 'Telugu', 'Tamil', 'Bengali', 
-    'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Odia'
+    'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Odia', 'Assamese'
   ];
 
   const getOccupationLabel = (value) => {
@@ -102,172 +121,285 @@ const ProfilePage = () => {
     return incomeLevels.find(i => i.value === value)?.label || value;
   };
 
+  const getIncomeColor = (value) => {
+    return incomeLevels.find(i => i.value === value)?.color || 'text-gray-600';
+  };
+
   return (
-    <div className="space-y-6 pb-20">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-6 text-white">
-        <h1 className="text-2xl font-bold mb-2">मेरी प्रोफाइल</h1>
-        <p className="text-purple-100">My Profile & Settings</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white pb-20">
+      {/* Success Toast */}
+      {showSuccess && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-slide-up">
+          <div className="bg-green-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2">
+            <CheckCircle size={18} />
+            <span>Profile updated successfully!</span>
+          </div>
+        </div>
+      )}
+
+      {/* Header with Cover Image */}
+      <div className="relative">
+        <div className="h-32 bg-gradient-to-r from-green-600 to-emerald-600"></div>
+        <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2">
+          <div className="relative">
+            <div className="w-24 h-24 bg-white rounded-full p-1 shadow-xl">
+              <div className="w-full h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                <User size={40} className="text-white" />
+              </div>
+            </div>
+            <button className="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md hover:scale-110 transition-transform">
+              <Camera size={14} className="text-green-600" />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Profile Card */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center shadow-md">
-              <User size={40} className="text-purple-600" />
-            </div>
-            <div>
-              <h2 className="font-bold text-xl text-gray-800">
-                {userContext.name || 'Rural Citizen'}
-              </h2>
-              <p className="text-sm text-gray-500 mt-1">
-                Member since {new Date().getFullYear()}
-              </p>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">
-                  Active
-                </div>
-                <div className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
-                  {userContext.voice_preferred ? 'Voice Enabled' : 'Text Mode'}
-                </div>
-              </div>
-            </div>
+      <div className="container mx-auto px-4 pt-16 max-w-2xl">
+        {/* User Name & Edit Button */}
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">
+            {formData.name || 'Rural Citizen'}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Member since {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+          </p>
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">Active</span>
+            <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
+              {formData.voice_preferred ? '🎤 Voice Enabled' : '⌨️ Text Mode'}
+            </span>
           </div>
-          <button
-            onClick={() => setIsEditing(!isEditing)}
-            className="flex items-center gap-1 text-purple-600 text-sm font-medium hover:text-purple-700"
-          >
-            {isEditing ? (
-              <XCircle size={16} />
-            ) : (
-              <Edit2 size={16} />
-            )}
-            {isEditing ? 'Cancel' : 'Edit'}
-          </button>
         </div>
 
-        {!isEditing ? (
-          // View Mode
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="flex items-center gap-3 text-gray-700 p-2 bg-gray-50 rounded-lg">
-                <MapPin size={18} className="text-purple-600" />
-                <div>
-                  <p className="text-xs text-gray-500">Location</p>
-                  <p className="text-sm font-medium">{userContext.location || 'Not set'}</p>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="bg-white rounded-xl p-3 text-center shadow-sm border border-gray-100">
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <MessageCircle size={14} className="text-green-600" />
+            </div>
+            <div className="text-xl font-bold text-gray-800">{stats.totalQueries}</div>
+            <div className="text-xs text-gray-500">Total Queries</div>
+          </div>
+          <div className="bg-white rounded-xl p-3 text-center shadow-sm border border-gray-100">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <Star size={14} className="text-blue-600" />
+            </div>
+            <div className="text-xl font-bold text-gray-800">{stats.savedSchemes}</div>
+            <div className="text-xs text-gray-500">Schemes Found</div>
+          </div>
+          <div className="bg-white rounded-xl p-3 text-center shadow-sm border border-gray-100">
+            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <Calendar size={14} className="text-orange-600" />
+            </div>
+            <div className="text-xl font-bold text-gray-800">{stats.daysActive}</div>
+            <div className="text-xs text-gray-500">Days Active</div>
+          </div>
+          <div className="bg-white rounded-xl p-3 text-center shadow-sm border border-gray-100">
+            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <TrendingUp size={14} className="text-purple-600" />
+            </div>
+            <div className="text-xl font-bold text-gray-800">{stats.questionsAsked}</div>
+            <div className="text-xs text-gray-500">Questions</div>
+          </div>
+        </div>
+
+        {/* Profile Card */}
+        <div className="bg-white rounded-2xl shadow-lg mb-6 overflow-hidden">
+          <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <User size={18} className="text-green-600" />
+              <h2 className="font-semibold text-gray-800">Personal Information</h2>
+            </div>
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className="flex items-center gap-1 text-green-600 text-sm font-medium hover:text-green-700 transition-colors"
+            >
+              <Edit2 size={14} />
+              {isEditing ? 'Cancel' : 'Edit'}
+            </button>
+          </div>
+          
+          <div className="p-6">
+            {!isEditing ? (
+              // View Mode
+              <div className="space-y-4">
+                {formData.name && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    <User size={18} className="text-green-600" />
+                    <div>
+                      <p className="text-xs text-gray-500">Full Name</p>
+                      <p className="text-sm font-medium text-gray-800">{formData.name}</p>
+                    </div>
+                  </div>
+                )}
+                {formData.email && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    <Mail size={18} className="text-green-600" />
+                    <div>
+                      <p className="text-xs text-gray-500">Email Address</p>
+                      <p className="text-sm font-medium text-gray-800">{formData.email}</p>
+                    </div>
+                  </div>
+                )}
+                {formData.phone && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    <Phone size={18} className="text-green-600" />
+                    <div>
+                      <p className="text-xs text-gray-500">Phone Number</p>
+                      <p className="text-sm font-medium text-gray-800">{formData.phone}</p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <MapPin size={18} className="text-green-600" />
+                  <div>
+                    <p className="text-xs text-gray-500">Location</p>
+                    <p className="text-sm font-medium text-gray-800">{formData.location || 'Not set'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <Briefcase size={18} className="text-green-600" />
+                  <div>
+                    <p className="text-xs text-gray-500">Occupation</p>
+                    <p className="text-sm font-medium text-gray-800">{getOccupationLabel(formData.occupation)}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <DollarSign size={18} className={getIncomeColor(formData.income_level)} />
+                  <div>
+                    <p className="text-xs text-gray-500">Income Level</p>
+                    <p className={`text-sm font-medium ${getIncomeColor(formData.income_level)}`}>
+                      {getIncomeLabel(formData.income_level)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <Globe size={18} className="text-green-600" />
+                  <div>
+                    <p className="text-xs text-gray-500">Preferred Language</p>
+                    <p className="text-sm font-medium text-gray-800">{formData.language}</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-gray-700 p-2 bg-gray-50 rounded-lg">
-                <Briefcase size={18} className="text-purple-600" />
+            ) : (
+              // Edit Mode
+              <div className="space-y-4">
                 <div>
-                  <p className="text-xs text-gray-500">Occupation</p>
-                  <p className="text-sm font-medium">{getOccupationLabel(userContext.occupation)}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Enter your name"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
+                  />
                 </div>
-              </div>
-              <div className="flex items-center gap-3 text-gray-700 p-2 bg-gray-50 rounded-lg">
-                <DollarSign size={18} className="text-purple-600" />
                 <div>
-                  <p className="text-xs text-gray-500">Income Level</p>
-                  <p className="text-sm font-medium">{getIncomeLabel(userContext.income_level)}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="your@email.com"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
+                  />
                 </div>
-              </div>
-              <div className="flex items-center gap-3 text-gray-700 p-2 bg-gray-50 rounded-lg">
-                <Globe size={18} className="text-purple-600" />
                 <div>
-                  <p className="text-xs text-gray-500">Language</p>
-                  <p className="text-sm font-medium">{userContext.language}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="+91 XXXXXXXXXX"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
+                  />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Location (District, State)</label>
+                  <input
+                    type="text"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    placeholder="e.g., Sitapur, Uttar Pradesh"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">For personalized scheme recommendations</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Occupation</label>
+                  <select
+                    value={formData.occupation}
+                    onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
+                  >
+                    {occupations.map(occ => (
+                      <option key={occ.value} value={occ.value}>
+                        {occ.icon} {occ.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Income Level</label>
+                  <select
+                    value={formData.income_level}
+                    onChange={(e) => setFormData({ ...formData, income_level: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
+                  >
+                    {incomeLevels.map(inc => (
+                      <option key={inc.value} value={inc.value}>
+                        {inc.icon} {inc.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Language</label>
+                  <select
+                    value={formData.language}
+                    onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
+                  >
+                    {languages.map(lang => (
+                      <option key={lang} value={lang}>{lang}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={handleSave}
+                  disabled={isLoading}
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isLoading ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <>
+                      <Save size={18} />
+                      Save Changes
+                    </>
+                  )}
+                </button>
               </div>
+            )}
+          </div>
+        </div>
+
+        {/* Preferences Card */}
+        <div className="bg-white rounded-2xl shadow-lg mb-6 overflow-hidden">
+          <div className="border-b border-gray-100 px-6 py-4">
+            <div className="flex items-center gap-2">
+              <Settings size={18} className="text-green-600" />
+              <h2 className="font-semibold text-gray-800">Preferences</h2>
             </div>
           </div>
-        ) : (
-          // Edit Mode
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                Your Name (Optional)
-              </label>
-              <input
-                type="text"
-                value={formData.name || ''}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-purple-500"
-                placeholder="Enter your name"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                <MapPin size={14} className="inline mr-1" />
-                Location (District, State)
-              </label>
-              <input
-                type="text"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-purple-500"
-                placeholder="e.g., Sitapur, Uttar Pradesh"
-              />
-              <p className="text-xs text-gray-400 mt-1">For personalized scheme recommendations</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                <Briefcase size={14} className="inline mr-1" />
-                Occupation
-              </label>
-              <select
-                value={formData.occupation}
-                onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-purple-500"
-              >
-                {occupations.map(occ => (
-                  <option key={occ.value} value={occ.value}>
-                    {occ.icon} {occ.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                <DollarSign size={14} className="inline mr-1" />
-                Income Level
-              </label>
-              <select
-                value={formData.income_level}
-                onChange={(e) => setFormData({ ...formData, income_level: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-purple-500"
-              >
-                {incomeLevels.map(inc => (
-                  <option key={inc.value} value={inc.value}>
-                    {inc.icon} {inc.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                <Globe size={14} className="inline mr-1" />
-                Preferred Language
-              </label>
-              <select
-                value={formData.language}
-                onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-purple-500"
-              >
-                {languages.map(lang => (
-                  <option key={lang} value={lang}>{lang}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-2">
-                <Volume2 size={18} className="text-purple-600" />
-                <span className="text-sm">Enable voice responses</span>
+          <div className="p-6 space-y-3">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <Volume2 size={18} className="text-green-600" />
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Voice Responses</p>
+                  <p className="text-xs text-gray-500">Get spoken responses</p>
+                </div>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -276,155 +408,119 @@ const ProfilePage = () => {
                   onChange={(e) => setFormData({ ...formData, voice_preferred: e.target.checked })}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
               </label>
             </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <Bell size={18} className="text-green-600" />
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Notifications</p>
+                  <p className="text-xs text-gray-500">Scheme alerts and updates</p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.notifications_enabled}
+                  onChange={(e) => setFormData({ ...formData, notifications_enabled: e.target.checked })}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+              </label>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                {formData.dark_mode ? <Moon size={18} className="text-green-600" /> : <Sun size={18} className="text-green-600" />}
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Dark Mode</p>
+                  <p className="text-xs text-gray-500">Switch theme</p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.dark_mode}
+                  onChange={(e) => setFormData({ ...formData, dark_mode: e.target.checked })}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+              </label>
+            </div>
+          </div>
+        </div>
 
-            <button
-              onClick={handleSave}
-              className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 font-medium"
-            >
-              <Save size={18} />
-              Save Changes
+        {/* Account Settings */}
+        <div className="bg-white rounded-2xl shadow-lg mb-6 overflow-hidden">
+          <div className="border-b border-gray-100 px-6 py-4">
+            <div className="flex items-center gap-2">
+              <Shield size={18} className="text-green-600" />
+              <h2 className="font-semibold text-gray-800">Account Settings</h2>
+            </div>
+          </div>
+          <div className="p-6 space-y-2">
+            <button className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors">
+              <div className="flex items-center gap-3">
+                <Smartphone size={18} className="text-gray-500" />
+                <span className="text-sm text-gray-700">Change Password</span>
+              </div>
+              <ChevronRight size={16} className="text-gray-400" />
+            </button>
+            <button className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors">
+              <div className="flex items-center gap-3">
+                <Database size={18} className="text-gray-500" />
+                <span className="text-sm text-gray-700">Download My Data</span>
+              </div>
+              <ChevronRight size={16} className="text-gray-400" />
+            </button>
+            <button className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors">
+              <div className="flex items-center gap-3">
+                <Languages size={18} className="text-gray-500" />
+                <span className="text-sm text-gray-700">Language Preferences</span>
+              </div>
+              <ChevronRight size={16} className="text-gray-400" />
             </button>
           </div>
-        )}
-      </div>
-
-      {/* Stats Section */}
-      <div>
-        <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-          <Award size={18} className="text-purple-600" />
-          Your Activity
-        </h3>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 text-center">
-            <div className="text-2xl font-bold text-blue-700">{stats.totalQueries}</div>
-            <div className="text-xs text-gray-600 mt-1">Total Queries</div>
-          </div>
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3 text-center">
-            <div className="text-2xl font-bold text-green-700">{stats.savedSchemes}</div>
-            <div className="text-xs text-gray-600 mt-1">Schemes Found</div>
-          </div>
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-3 text-center">
-            <div className="text-2xl font-bold text-orange-700">{stats.daysActive}</div>
-            <div className="text-xs text-gray-600 mt-1">Days Active</div>
-          </div>
         </div>
-      </div>
 
-      {/* Notification Preferences */}
-      <div className="card">
-        <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-          <Bell size={18} className="text-purple-600" />
-          Notification Preferences
-        </h3>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Scheme Alerts</p>
-              <p className="text-xs text-gray-500">New government schemes for you</p>
+        {/* Danger Zone */}
+        <div className="bg-red-50 rounded-2xl border border-red-200 mb-6 overflow-hidden">
+          <div className="border-b border-red-200 px-6 py-4">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={18} className="text-red-600" />
+              <h2 className="font-semibold text-red-800">Danger Zone</h2>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notifications.schemeAlerts}
-                onChange={(e) => setNotifications({ ...notifications, schemeAlerts: e.target.checked })}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-            </label>
           </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Weather Alerts</p>
-              <p className="text-xs text-gray-500">Farming weather updates</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notifications.weatherAlerts}
-                onChange={(e) => setNotifications({ ...notifications, weatherAlerts: e.target.checked })}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-            </label>
+          <div className="p-6">
+            <button
+              onClick={handleLogout}
+              className="w-full bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              <LogOut size={18} />
+              Logout
+            </button>
+            <p className="text-xs text-red-600 text-center mt-3">
+              Logging out will clear your session
+            </p>
           </div>
         </div>
-      </div>
 
-      {/* Accessibility Settings */}
-      <div className="card">
-        <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-          <Eye size={18} className="text-purple-600" />
-          Accessibility
-        </h3>
-        <div className="space-y-2 text-sm">
-          <button className="w-full text-left p-2 hover:bg-gray-50 rounded-lg flex items-center justify-between">
-            <span>High Contrast Mode</span>
-            <span className="text-gray-400">Coming Soon</span>
-          </button>
-          <button className="w-full text-left p-2 hover:bg-gray-50 rounded-lg flex items-center justify-between">
-            <span>Large Text Mode</span>
-            <span className="text-gray-400">Coming Soon</span>
-          </button>
+        {/* App Info */}
+        <div className="text-center pb-6">
+          <p className="text-xs text-gray-400">
+            Sahaayak AI v1.0.0
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            Made with ❤️ for Rural India
+          </p>
+          <div className="flex items-center justify-center gap-4 mt-3">
+            <button className="text-xs text-green-600 hover:text-green-700">Privacy Policy</button>
+            <span className="text-xs text-gray-300">•</span>
+            <button className="text-xs text-green-600 hover:text-green-700">Terms of Service</button>
+            <span className="text-xs text-gray-300">•</span>
+            <button className="text-xs text-green-600 hover:text-green-700">Help Center</button>
+          </div>
         </div>
-      </div>
-
-      {/* Data Management */}
-      <div className="card">
-        <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2 text-red-600">
-          <Database size={18} />
-          Data Management
-        </h3>
-        <div className="space-y-2">
-          <button
-            onClick={exportData}
-            className="w-full border border-blue-300 text-blue-600 py-2 rounded-lg hover:bg-blue-50 flex items-center justify-center gap-2 text-sm"
-          >
-            <Download size={16} />
-            Export My Data
-          </button>
-          <button
-            onClick={clearHistory}
-            className="w-full border border-red-300 text-red-600 py-2 rounded-lg hover:bg-red-50 flex items-center justify-center gap-2 text-sm"
-          >
-            <Trash2 size={16} />
-            Clear Chat History
-          </button>
-        </div>
-        <p className="text-xs text-gray-400 mt-3">
-          Your data is stored locally on your device. Export your data before clearing.
-        </p>
-      </div>
-
-      {/* Help & Support */}
-      <div className="card">
-        <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-          <HelpCircle size={18} className="text-purple-600" />
-          Help & Support
-        </h3>
-        <div className="space-y-2">
-          <button className="w-full text-left p-2 hover:bg-gray-50 rounded-lg flex items-center justify-between">
-            <span>📖 User Guide</span>
-            <span className="text-gray-400">→</span>
-          </button>
-          <button className="w-full text-left p-2 hover:bg-gray-50 rounded-lg flex items-center justify-between">
-            <span>📞 Contact Support</span>
-            <span className="text-gray-400">→</span>
-          </button>
-          <button className="w-full text-left p-2 hover:bg-gray-50 rounded-lg flex items-center justify-between">
-            <span>ℹ️ About Sahaayak AI</span>
-            <span className="text-gray-400">→</span>
-          </button>
-        </div>
-      </div>
-
-      {/* App Info */}
-      <div className="text-center text-xs text-gray-400 py-4 space-y-1">
-        <p>Sahaayak AI v1.0.0</p>
-        <p>Made with ❤️ for Rural India</p>
-        <p>Voice-First AI Assistant</p>
       </div>
     </div>
   );
