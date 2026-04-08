@@ -14,8 +14,7 @@ if ('serviceWorker' in navigator) {
   })
 }
 
+// Remove StrictMode to prevent double rendering in development
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
+  <App />
+);
