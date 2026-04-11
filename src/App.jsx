@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { UserProvider } from './context/UserContext';
 import { OfflineProvider } from './context/OfflineContext';
@@ -11,12 +11,37 @@ import EducationPage from './components/pages/EducationPage';
 import SchemesPage from './components/pages/SchemesPage';
 import ProfilePage from './components/pages/ProfilePage';
 import OfflinePage from './components/pages/OfflinePage';
+import { db, collection, addDoc } from './components/services/firebase/config';
+
+const TestFirebase = () => {
+  useEffect(() => {
+    const testFirebase = async () => {
+      try {
+        const testRef = collection(db, 'test_connection');
+        await addDoc(testRef, {
+          message: 'Firebase is working!',
+          timestamp: new Date()
+        });
+        console.log('✅ Firebase connected successfully!');
+      } catch (error) {
+        console.error('❌ Firebase connection error:', error);
+      }
+    };
+    testFirebase();
+  }, []);
+  
+  return null;
+};
 
 function App() {
   return (
     <UserProvider>
       <OfflineProvider>
-        <Router>
+        <Router future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}>
+          <TestFirebase />
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
