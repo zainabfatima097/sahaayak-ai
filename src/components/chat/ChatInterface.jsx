@@ -1,15 +1,70 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import VoiceButton from '../common/VoiceButton';
 import { geminiClient } from '../../components/services/ai/geminiClient';
 import { useUserContext } from '../../context/UserContext';
-import { 
-  saveChatMessageToFirebase, 
-  getChatMessages, 
-  createChatSession,
-  updateUserStats 
+import {
+  db, collection, query, where, getDocs, addDoc, updateDoc, doc, orderBy
 } from '../../components/services/firebase/config';
-import { saveChatMessage as saveLocalMessage, getChatHistory, cacheResponse, getCachedResponse } from '../../components/services/offline/indexedDB';
-import { Send, Copy, Volume2, ThumbsUp, ThumbsDown, Sparkles, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Copy, Volume2, ThumbsUp, ThumbsDown, Bot, User, Loader2, Globe, Mic, Sparkles } from 'lucide-react';
+
+/* ── Injected styles (scoped to chat) ──────────────────────────────── */
+const ChatStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap');
+
+    .ci-wrap { --green: #16a34a; --emerald: #10b981; --green-light: #dcfce7; --green-pale: #f0fdf4; font-family: 'Noto Sans', 'Noto Sans Devanagari', sans-serif; }
+    .ci-wrap * { box-sizing: border-box; }
+
+    /* typing dots */
+    @keyframes ci-bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-7px)} }
+    .ci-dot { width:8px;height:8px;border-radius:50%;background:#86efac;display:inline-block;animation:ci-bounce 1.3s ease-in-out infinite; }
+    .ci-dot:nth-child(2){animation-delay:0.16s;}
+    .ci-dot:nth-child(3){animation-delay:0.32s;}
+
+    /* message entrance */
+    @keyframes ci-msg-in { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+    .ci-msg { animation: ci-msg-in 0.35s cubic-bezier(0.34,1.2,0.64,1) both; }
+
+    /* shimmer on AI bubble while typing */
+    @keyframes ci-shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+
+    /* pulse dot */
+    @keyframes ci-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }
+    .ci-pulse { animation: ci-pulse 2s ease-in-out infinite; }
+
+    /* suggestion pill hover */
+    .ci-pill { transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease; }
+    .ci-pill:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(22,163,74,0.18); background: #bbf7d0 !important; }
+
+    /* send button hover */
+    .ci-send { transition: transform 0.18s ease, box-shadow 0.18s ease; }
+    .ci-send:hover:not(:disabled) { transform: scale(1.12); box-shadow: 0 4px 16px rgba(16,185,129,0.45); }
+    .ci-send:disabled { opacity:0.45; cursor:not-allowed; }
+
+    /* textarea focus ring */
+    .ci-textarea:focus { outline: none; border-color: #22c55e !important; box-shadow: 0 0 0 3px rgba(34,197,94,0.18); }
+
+    /* action icon hover */
+    .ci-action { transition: background 0.18s, color 0.18s, transform 0.18s; border-radius: 8px; }
+    .ci-action:hover { background: #dcfce7; color: #15803d; transform: scale(1.1); }
+
+    /* feedback active state */
+    .ci-feedback-active { background: #dcfce7 !important; color: #15803d !important; }
+
+    /* lang menu */
+    @keyframes ci-dropdown { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+    .ci-dropdown { animation: ci-dropdown 0.2s ease both; }
+
+    /* empty state float */
+    @keyframes ci-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    .ci-float { animation: ci-float 3.5s ease-in-out infinite; }
+
+    /* scroll bar */
+    .ci-scroll::-webkit-scrollbar { width:5px; }
+    .ci-scroll::-webkit-scrollbar-track { background:transparent; }
+    .ci-scroll::-webkit-scrollbar-thumb { background:#bbf7d0; border-radius:8px; }
+  `}</style>
+);
 
 const ChatInterface = ({ domain = 'general', sessionId: propSessionId, onSessionChange }) => {
   const [messages, setMessages] = useState([]);
@@ -18,210 +73,340 @@ const ChatInterface = ({ domain = 'general', sessionId: propSessionId, onSession
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [isTyping, setIsTyping] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(propSessionId);
-  const [showVoiceHint, setShowVoiceHint] = useState(true);
+  const [showLanguageMenu, setShowLanguageMenu] = useState(false);
+  const [liked, setLiked] = useState({});
+  const [disliked, setDisliked] = useState({});
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const { userContext, updateUserContext } = useUserContext();
 
-  useEffect(() => {
-    if (currentSessionId) {
-      loadSessionMessages();
-    }
-    
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    const timer = setTimeout(() => setShowVoiceHint(false), 5000);
-    
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      clearTimeout(timer);
-    };
-  }, [domain, currentSessionId]);
+  const languages = [
+    { code: 'hi', name: 'हिन्दी',  nativeName: 'हिन्दी' },
+    { code: 'en', name: 'English',  nativeName: 'English' },
+    { code: 'te', name: 'తెలుగు',  nativeName: 'తెలుగు' },
+    { code: 'mr', name: 'मराठी',   nativeName: 'मराठी' },
+    { code: 'bn', name: 'বাংলা',   nativeName: 'বাংলা' },
+    { code: 'ta', name: 'தமிழ்',   nativeName: 'தமிழ்' },
+  ];
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping]);
+    if (propSessionId) { setCurrentSessionId(propSessionId); loadSessionMessages(propSessionId); }
+    else { setCurrentSessionId(null); setMessages([]); }
+  }, [propSessionId]);
 
-  const loadSessionMessages = async () => {
-    if (!currentSessionId) return;
-    const result = await getChatMessages(currentSessionId);
-    if (result.success && result.messages.length > 0) {
-      setMessages(result.messages);
-    }
+  useEffect(() => {
+    if (currentSessionId && !propSessionId) loadSessionMessages(currentSessionId);
+  }, [currentSessionId]);
+
+  useEffect(() => {
+    const on = () => setIsOffline(false);
+    const off = () => setIsOffline(true);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
+
+  const loadSessionMessages = async (sid) => {
+    if (!sid) return;
+    setIsLoading(true);
+    try {
+      const q = query(collection(db, 'chat_messages'), where('sessionId', '==', sid), orderBy('timestamp', 'asc'));
+      const snap = await getDocs(q);
+      setMessages(snap.docs.map(d => ({ id: d.id, ...d.data(), timestamp: d.data().timestamp?.toDate?.() || new Date() })));
+    } catch (e) { console.error(e); }
+    finally { setIsLoading(false); }
   };
 
   const createNewSession = async () => {
-    const result = await createChatSession(userContext.uid, domain, `New ${domain} chat`);
-    if (result.success) {
-      setCurrentSessionId(result.sessionId);
-      setMessages([]);
-      onSessionChange?.(result.sessionId);
-    }
-    return result.sessionId;
+    try {
+      const ref = await addDoc(collection(db, 'chat_sessions'), {
+        userId: userContext.uid, domain,
+        title: `${domain} Chat - ${new Date().toLocaleString()}`,
+        createdAt: new Date(), updatedAt: new Date(), messageCount: 0, lastMessage: ''
+      });
+      setCurrentSessionId(ref.id);
+      onSessionChange?.(ref.id);
+      return ref.id;
+    } catch { return null; }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const saveMessage = async (sid, msg) => {
+    try {
+      await addDoc(collection(db, 'chat_messages'), {
+        sessionId: sid, userId: userContext.uid, domain,
+        type: msg.type, text: msg.text, timestamp: new Date(), actionable: msg.actionable || null
+      });
+      const snap = await getDocs(query(collection(db, 'chat_messages'), where('sessionId', '==', sid)));
+      await updateDoc(doc(db, 'chat_sessions', sid), { updatedAt: new Date(), messageCount: snap.size });
+    } catch (e) { console.error(e); }
   };
 
   const handleSendMessage = async (text) => {
     if (!text.trim()) return;
-    
-    // Create session if none exists
-    let sessionId = currentSessionId;
-    if (!sessionId) {
-      sessionId = await createNewSession();
-    }
-    
-    const userMessage = {
-      type: 'user',
-      text: text,
-      domain: domain,
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
+    let sid = currentSessionId;
+    if (!sid && userContext.isAuthenticated) { sid = await createNewSession(); if (!sid) return; }
+
+    const userMsg = { id: Date.now(), type: 'user', text, timestamp: new Date() };
+    setMessages(p => [...p, userMsg]);
     setInputText('');
     setIsLoading(true);
     setIsTyping(true);
-    
-    // Save to Firebase
-    if (!isOffline && userContext.isAuthenticated) {
-      await saveChatMessageToFirebase(sessionId, userContext.uid, userMessage, domain);
-    }
-    
+    if (sid && userContext.isAuthenticated && !isOffline) await saveMessage(sid, userMsg);
+
     if (isOffline) {
-      const offlineResponse = {
-        type: 'ai',
-        text: "आप ऑफलाइन हैं। कृपया इंटरनेट कनेक्ट करें।\n⚠️ You are offline. Please connect to internet.",
-        domain: domain,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, offlineResponse]);
-      setIsLoading(false);
-      setIsTyping(false);
-      return;
+      setMessages(p => [...p, { id: Date.now()+1, type:'ai', text:"आप ऑफलाइन हैं।\nYou are offline. Please connect to the internet.", timestamp:new Date() }]);
+      setIsLoading(false); setIsTyping(false); return;
     }
-    
     try {
-      const response = await geminiClient.generateResponse(text, userContext, domain);
-      
-      const aiMessage = {
-        type: 'ai',
-        text: response.text,
-        actionable: response.actionable,
-        domain: domain,
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, aiMessage]);
-      
-      // Save AI response to Firebase
-      await saveChatMessageToFirebase(sessionId, userContext.uid, aiMessage, domain);
-      
-      // Update user stats
-      await updateUserStats(userContext.uid, { field: 'totalQueries', increment: 1 });
-      
+      const resp = await geminiClient.generateResponse(text, userContext, domain);
+      const aiMsg = { id: Date.now()+1, type:'ai', text: resp.text, actionable: resp.actionable, timestamp: new Date() };
+      setMessages(p => [...p, aiMsg]);
+      if (sid && userContext.isAuthenticated) await saveMessage(sid, aiMsg);
       if (userContext.voice_preferred && 'speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(response.text.substring(0, 200));
-        utterance.lang = userContext.language === 'Hindi' ? 'hi-IN' : 'en-IN';
-        window.speechSynthesis.speak(utterance);
+        const u = new SpeechSynthesisUtterance(resp.text.substring(0,200));
+        u.lang = langCode(userContext.language); window.speechSynthesis.speak(u);
       }
-      
-    } catch (error) {
-      console.error('Failed to get AI response:', error);
-      const errorMessage = {
-        type: 'ai',
-        text: "क्षमा करें, सेवा में तकनीकी समस्या है। कृपया पुनः प्रयास करें।\nSorry, technical issue. Please try again.",
-        domain: domain,
-        timestamp: new Date(),
-        error: true
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-      setTimeout(() => setIsTyping(false), 500);
-    }
+    } catch {
+      setMessages(p => [...p, { id:Date.now()+1, type:'ai', error:true, timestamp:new Date(),
+        text:"क्षमा करें, सेवा उपलब्ध नहीं है।\nSorry, service is temporarily unavailable. Please try again." }]);
+    } finally { setIsLoading(false); setTimeout(()=>setIsTyping(false),500); }
   };
 
-  const handleVoiceResult = (text) => {
-    setInputText(text);
-    handleSendMessage(text);
+  const langCode = (lang) => ({ Hindi:'hi-IN', Telugu:'te-IN', Marathi:'mr-IN', Bengali:'bn-IN', Tamil:'ta-IN' }[lang] || 'en-IN');
+
+  const handleVoiceResult = (text) => { setInputText(text); handleSendMessage(text); };
+
+  const showToast = (msg) => {
+    const el = Object.assign(document.createElement('div'), { textContent: msg });
+    Object.assign(el.style, { position:'fixed', bottom:'80px', left:'50%', transform:'translateX(-50%)', background:'#15803d', color:'#fff', padding:'8px 20px', borderRadius:'999px', fontSize:'13px', zIndex:9999, boxShadow:'0 4px 20px rgba(0,0,0,0.18)', fontFamily:'Noto Sans, sans-serif', transition:'opacity 0.4s' });
+    document.body.appendChild(el);
+    setTimeout(()=>{ el.style.opacity='0'; setTimeout(()=>el.remove(),400); },1800);
   };
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-    const notification = document.createElement('div');
-    notification.className = 'fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-full text-sm shadow-lg animate-slide-up z-50';
-    notification.textContent = '✓ Copied to clipboard!';
-    document.body.appendChild(notification);
-    setTimeout(() => notification.remove(), 2000);
-  };
-
+  const copyToClipboard = (text) => { navigator.clipboard.writeText(text); showToast('✓ Copied!'); };
   const speakMessage = (text) => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = userContext.language === 'Hindi' ? 'hi-IN' : 'en-IN';
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
-      window.speechSynthesis.speak(utterance);
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = langCode(userContext.language); u.rate = 0.9;
+      window.speechSynthesis.speak(u);
     }
   };
+  const changeLanguage = (code, name) => { updateUserContext({ language: name }); setShowLanguageMenu(false); showToast(`Language → ${name}`); };
 
-  // Rest of your existing JSX remains the same...
-  // (keeping the same UI as before)
+  const suggestedQuestions = {
+    agriculture: ['धान की खेती कैसे करें?','मौसम पूर्वानुमान','MSP दर क्या है?','उर्वरक की जानकारी'],
+    healthcare:  ['बुखार का घरेलू इलाज','नजदीकी अस्पताल','आयुष्मान कार्ड','108 हेल्पलाइन'],
+    education:   ['स्कूल दाखिला','छात्रवृत्ति योजना','मुफ्त कोर्स','डिजिटल शिक्षा'],
+    schemes:     ['PM-KISAN योजना','राशन कार्ड','आवास योजना','आयुष्मान भारत'],
+    general:     ['सरकारी योजनाएं','कृषि सलाह','स्वास्थ्य सुझाव','शिक्षा जानकारी'],
+  };
+  const domainMeta = {
+    agriculture: { icon:'🌾', title:'किसान साथी', subtitle:'Farmer Assistant',  color:'#15803d', bg:'#dcfce7', img:'https://images.pexels.com/photos/2132180/pexels-photo-2132180.jpeg?auto=compress&w=600&h=300&fit=crop' },
+    healthcare:  { icon:'🏥', title:'स्वास्थ्य साथी', subtitle:'Health Assistant', color:'#dc2626', bg:'#fee2e2', img:'https://images.pexels.com/photos/5214958/pexels-photo-5214958.jpeg?auto=compress&w=600&h=300&fit=crop' },
+    education:   { icon:'📚', title:'शिक्षा साथी', subtitle:'Education Assistant', color:'#1d4ed8', bg:'#dbeafe', img:'https://images.pexels.com/photos/8471844/pexels-photo-8471844.jpeg?auto=compress&w=600&h=300&fit=crop' },
+    schemes:     { icon:'📋', title:'योजना साथी', subtitle:'Schemes Assistant',  color:'#b45309', bg:'#fef3c7', img:'https://images.pexels.com/photos/8942991/pexels-photo-8942991.jpeg?auto=compress&w=600&h=300&fit=crop' },
+    general:     { icon:'🤖', title:'सहायक AI',  subtitle:'General Assistant',   color:'#6d28d9', bg:'#ede9fe', img:'https://images.pexels.com/photos/7991579/pexels-photo-7991579.jpeg?auto=compress&w=600&h=300&fit=crop' },
+  };
+  const meta = domainMeta[domain] || domainMeta.general;
+  const questions = suggestedQuestions[domain] || suggestedQuestions.general;
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-gray-50 to-white">
-      {/* Your existing JSX here - same as before */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 scroll-smooth">
-        {/* Same message area */}
+    <div className="ci-wrap" style={{ display:'flex', flexDirection:'column', height:'100%', background:'linear-gradient(160deg,#f0fdf4 0%,#fff 60%)', fontFamily:"'Noto Sans','Noto Sans Devanagari',sans-serif" }}>
+      <ChatStyles />
+
+      {/* ── Messages ── */}
+      <div className="ci-scroll" style={{ flex:1, overflowY:'auto', padding:'24px 16px 8px' }}>
+        <div style={{ maxWidth:760, margin:'0 auto', display:'flex', flexDirection:'column', gap:16 }}>
+
+          {/* Empty state */}
+          {messages.length === 0 && !isLoading && (
+            <div style={{ textAlign:'center', padding:'40px 16px 24px' }}>
+              {/* Hero banner */}
+              <div style={{ borderRadius:20, overflow:'hidden', marginBottom:24, position:'relative', height:160, boxShadow:'0 8px 32px rgba(0,0,0,0.12)' }}>
+                <img src={meta.img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                <div style={{ position:'absolute', inset:0, background:'linear-gradient(to right, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 100%)' }} />
+                <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:6 }}>
+                  <div className="ci-float" style={{ fontSize:44 }}>{meta.icon}</div>
+                  <div style={{ fontFamily:"'Baloo 2',sans-serif", fontWeight:800, fontSize:22, color:'#fff', textShadow:'0 2px 8px rgba(0,0,0,0.4)' }}>{meta.title}</div>
+                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.8)', fontWeight:500 }}>{meta.subtitle}</div>
+                </div>
+              </div>
+
+              <p style={{ color:'#6b7280', fontSize:15, marginBottom:20 }}>
+                मुझसे कुछ भी पूछें · Ask me anything in <strong style={{ color: meta.color }}>{userContext.language || 'Hindi'}</strong> or English
+              </p>
+
+              {/* Suggestion pills */}
+              <div style={{ display:'flex', flexWrap:'wrap', gap:10, justifyContent:'center', maxWidth:560, margin:'0 auto' }}>
+                {questions.map((q, i) => (
+                  <button
+                    key={i}
+                    className="ci-pill"
+                    onClick={() => handleSendMessage(q)}
+                    style={{ padding:'10px 18px', borderRadius:999, background:'#fff', border:`1.5px solid ${meta.bg === '#dcfce7' ? '#bbf7d0' : '#e5e7eb'}`, color:'#374151', fontSize:14, cursor:'pointer', fontFamily:"'Baloo 2',sans-serif", fontWeight:600, display:'flex', alignItems:'center', gap:8, boxShadow:'0 2px 8px rgba(0,0,0,0.05)' }}
+                  >
+                    <span style={{ fontSize:16 }}>💬</span> {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Message list */}
+          {messages.map((msg, idx) => (
+            <div key={msg.id || idx} className="ci-msg" style={{ display:'flex', justifyContent: msg.type==='user' ? 'flex-end' : 'flex-start', gap:10 }}>
+              {msg.type === 'user' ? (
+                <div style={{ display:'flex', alignItems:'flex-end', gap:8, maxWidth:'80%' }}>
+                  <div style={{ background:'linear-gradient(135deg,#16a34a,#10b981)', color:'#fff', borderRadius:'20px 20px 4px 20px', padding:'12px 18px', boxShadow:'0 4px 16px rgba(22,163,74,0.25)', fontSize:15, lineHeight:1.6, whiteSpace:'pre-wrap', fontFamily:"'Noto Sans','Noto Sans Devanagari',sans-serif" }}>
+                    {msg.text}
+                  </div>
+                  <div style={{ width:32, height:32, borderRadius:'50%', background:'#e5e7eb', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <User size={15} color="#6b7280" />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display:'flex', alignItems:'flex-start', gap:10, maxWidth:'85%' }}>
+                  {/* Bot avatar */}
+                  <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#22c55e,#10b981)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 12px rgba(34,197,94,0.3)' }}>
+                    <Bot size={18} color="#fff" />
+                  </div>
+                  {/* Bubble */}
+                  <div style={{ background:'#fff', borderRadius:'4px 20px 20px 20px', boxShadow:'0 4px 20px rgba(0,0,0,0.07)', border:'1.5px solid #f0fdf4', overflow:'hidden' }}>
+                    {/* Bubble header */}
+                    <div style={{ padding:'10px 16px 8px', borderBottom:'1px solid #f0fdf4', display:'flex', alignItems:'center', gap:8 }}>
+                      <span style={{ fontFamily:"'Baloo 2',sans-serif", fontWeight:700, fontSize:13, color:'#15803d' }}>Sahaayak AI</span>
+                      <span style={{ width:5, height:5, borderRadius:'50%', background:'#22c55e', display:'inline-block' }} className="ci-pulse" />
+                      <span style={{ fontSize:11, color:'#9ca3af', marginLeft:'auto' }}>
+                        {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : 'Now'}
+                      </span>
+                    </div>
+                    {/* Text */}
+                    <div style={{ padding:'12px 16px', fontSize:15, color: msg.error ? '#dc2626' : '#1f2937', lineHeight:1.75, whiteSpace:'pre-wrap', fontFamily:"'Noto Sans','Noto Sans Devanagari',sans-serif" }}>
+                      {msg.text}
+                    </div>
+                    {/* Action bar */}
+                    <div style={{ padding:'8px 12px', borderTop:'1px solid #f0fdf4', display:'flex', gap:4, alignItems:'center' }}>
+                      {[
+                        { icon: Copy,    label:'Copy',    action: ()=>copyToClipboard(msg.text) },
+                        { icon: Volume2, label:'Listen',  action: ()=>speakMessage(msg.text) },
+                      ].map(({icon:Icon, label, action}) => (
+                        <button key={label} className="ci-action" onClick={action} title={label}
+                          style={{ padding:'5px 8px', background:'transparent', border:'none', cursor:'pointer', color:'#9ca3af', display:'flex', alignItems:'center', gap:4, fontSize:12 }}>
+                          <Icon size={13} /> <span style={{ fontFamily:"'Noto Sans',sans-serif" }}>{label}</span>
+                        </button>
+                      ))}
+                      <div style={{ flex:1 }} />
+                      <button className={`ci-action ${liked[msg.id] ? 'ci-feedback-active' : ''}`}
+                        onClick={()=>setLiked(p=>({...p,[msg.id]:!p[msg.id]}))}
+                        style={{ padding:'5px 8px', background:'transparent', border:'none', cursor:'pointer', color:'#9ca3af', borderRadius:8 }} title="Helpful">
+                        <ThumbsUp size={13} />
+                      </button>
+                      <button className={`ci-action ${disliked[msg.id] ? 'ci-feedback-active' : ''}`}
+                        onClick={()=>setDisliked(p=>({...p,[msg.id]:!p[msg.id]}))}
+                        style={{ padding:'5px 8px', background:'transparent', border:'none', cursor:'pointer', color:'#9ca3af', borderRadius:8 }} title="Not helpful">
+                        <ThumbsDown size={13} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Typing indicator */}
+          {isTyping && (
+            <div className="ci-msg" style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
+              <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#22c55e,#10b981)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <Bot size={18} color="#fff" />
+              </div>
+              <div style={{ background:'#fff', borderRadius:'4px 20px 20px 20px', padding:'16px 20px', boxShadow:'0 4px 20px rgba(0,0,0,0.07)', border:'1.5px solid #f0fdf4', display:'flex', alignItems:'center', gap:5 }}>
+                <span className="ci-dot" />
+                <span className="ci-dot" />
+                <span className="ci-dot" />
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
       </div>
-      
-      {/* Input Area */}
-      <div className="border-t border-gray-200 bg-white/80 backdrop-blur-sm p-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex gap-2 items-end">
-            <div className="flex-1 relative group">
+
+      {/* ── Input area ── */}
+      <div style={{ borderTop:'1.5px solid #dcfce7', background:'rgba(255,255,255,0.92)', backdropFilter:'blur(12px)', padding:'14px 16px' }}>
+        <div style={{ maxWidth:760, margin:'0 auto' }}>
+          {/* Offline banner */}
+          {isOffline && (
+            <div style={{ background:'#fef3c7', border:'1px solid #fde68a', borderRadius:12, padding:'8px 14px', marginBottom:10, display:'flex', alignItems:'center', gap:8, fontSize:13, color:'#92400e' }}>
+              <span>⚠️</span> आप ऑफलाइन हैं · You are offline
+            </div>
+          )}
+
+          <div style={{ display:'flex', gap:10, alignItems:'flex-end' }}>
+            {/* Textarea wrapper */}
+            <div style={{ flex:1, position:'relative' }}>
               <textarea
                 ref={inputRef}
+                className="ci-textarea"
                 value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage(inputText)}
-                placeholder="Ask Sahaayak anything... (Shift + Enter for new line)"
-                rows="1"
-                className="w-full border border-gray-200 rounded-2xl px-4 py-3 pr-12 focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-200 resize-none transition-all duration-300"
-                style={{ minHeight: '48px', maxHeight: '120px' }}
+                onChange={e => setInputText(e.target.value)}
+                onKeyDown={e => e.key==='Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage(inputText))}
+                placeholder={`${userContext.language || 'Hindi'} या English में लिखें... (Shift+Enter नई लाइन)`}
+                rows={1}
+                style={{ width:'100%', border:'1.5px solid #dcfce7', borderRadius:16, padding:'13px 52px 13px 16px', fontSize:15, fontFamily:"'Noto Sans','Noto Sans Devanagari',sans-serif", resize:'none', minHeight:50, maxHeight:120, background:'#fff', color:'#1f2937', transition:'border-color 0.2s, box-shadow 0.2s', lineHeight:1.6 }}
               />
+              {/* Send button inside textarea */}
               <button
+                className="ci-send"
                 onClick={() => handleSendMessage(inputText)}
                 disabled={!inputText.trim() || isLoading}
-                className="absolute right-2 bottom-2 p-2 text-green-600 hover:bg-green-50 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
+                style={{ position:'absolute', right:8, bottom:8, width:36, height:36, borderRadius:10, background: inputText.trim() ? 'linear-gradient(135deg,#22c55e,#10b981)' : '#e5e7eb', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow: inputText.trim() ? '0 4px 12px rgba(34,197,94,0.35)' : 'none', transition:'background 0.2s, box-shadow 0.2s' }}
               >
-                {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className="group-hover:scale-110 transition-transform" />}
+                {isLoading ? <Loader2 size={16} color="#fff" style={{ animation:'spin 1s linear infinite' }} /> : <Send size={16} color={inputText.trim() ? '#fff' : '#9ca3af'} />}
               </button>
             </div>
+
+            {/* Voice button */}
             <VoiceButton
               onResult={handleVoiceResult}
-              onError={(error) => console.error(error)}
-              language={userContext.language === 'Hindi' ? 'hi-IN' : 'en-IN'}
+              onError={e => console.error(e)}
+              language={langCode(userContext.language)}
             />
           </div>
-          <div className="flex items-center justify-between mt-2">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <p className="text-xs text-gray-400">🔒 Your conversations are private and secure</p>
+
+          {/* Bottom bar */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:10, gap:8 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+              <span style={{ width:7, height:7, borderRadius:'50%', background:'#22c55e', display:'inline-block' }} className="ci-pulse" />
+              <span style={{ fontSize:12, color:'#9ca3af' }}>🔒 Private & secure · हिन्दी, English सभी भाषाएं</span>
             </div>
-            <p className="text-xs text-gray-400">🎤 Click mic to speak</p>
+
+            {/* Language switcher */}
+            <div style={{ position:'relative' }}>
+              <button
+                onClick={() => setShowLanguageMenu(v => !v)}
+                style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:8, border:'1px solid #dcfce7', background:'#f0fdf4', color:'#15803d', fontSize:12, cursor:'pointer', fontFamily:"'Baloo 2',sans-serif", fontWeight:600, transition:'background 0.2s' }}
+              >
+                <Globe size={13} /> {userContext.language || 'Hindi'}
+              </button>
+              {showLanguageMenu && (
+                <div className="ci-dropdown" style={{ position:'absolute', bottom:'calc(100% + 6px)', right:0, background:'#fff', borderRadius:14, boxShadow:'0 8px 32px rgba(0,0,0,0.14)', border:'1.5px solid #dcfce7', overflow:'hidden', zIndex:100, minWidth:140 }}>
+                  {languages.map(lang => (
+                    <button key={lang.code} onClick={() => changeLanguage(lang.code, lang.nativeName)}
+                      style={{ width:'100%', padding:'9px 14px', textAlign:'left', border:'none', background: userContext.language===lang.nativeName ? '#f0fdf4' : '#fff', color: userContext.language===lang.nativeName ? '#15803d' : '#374151', fontSize:14, cursor:'pointer', fontFamily:"'Noto Sans Devanagari','Noto Sans',sans-serif", fontWeight: userContext.language===lang.nativeName ? 600 : 400, transition:'background 0.15s', display:'flex', alignItems:'center', gap:8 }}>
+                      {userContext.language===lang.nativeName && <span style={{ color:'#22c55e' }}>✓</span>} {lang.nativeName}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 };
