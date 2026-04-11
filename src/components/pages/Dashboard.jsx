@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUserContext } from '../../context/UserContext';
 import { getChatHistory } from '../services/offline/indexedDB';
-import { TrendingUp, Clock, CheckCircle, Bell, ArrowRight } from 'lucide-react';
+import { TrendingUp, Clock, Bell, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
