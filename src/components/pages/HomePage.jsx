@@ -1,419 +1,664 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Mic, Users, Sun, Heart, GraduationCap, Landmark, ArrowRight, 
-  Play, Sparkles, ChevronRight, Award, Clock, Shield, TrendingUp,
-  Zap, Globe, MessageCircle, Star, CheckCircle, Phone, Mail,
-  MapPin, Calendar, DollarSign, Briefcase, UserCheck
+import {
+  Mic, Users, Sun, Heart, GraduationCap, Landmark, ArrowRight,
+  Play, Sparkles, ChevronRight, Award, Clock, Shield,
+  Zap, Globe, MessageCircle, CheckCircle, Phone,
 } from 'lucide-react';
 
+/* ─── Injected global styles ─────────────────────────────────────── */
+const GlobalStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Noto+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green-50:  #f0fdf4;
+      --green-100: #dcfce7;
+      --green-200: #bbf7d0;
+      --green-300: #86efac;
+      --green-400: #4ade80;
+      --green-500: #22c55e;
+      --green-600: #16a34a;
+      --green-700: #15803d;
+      --green-800: #166534;
+      --green-900: #14532d;
+      --emerald-500: #10b981;
+      --amber-400: #fbbf24;
+      --amber-500: #f59e0b;
+      --orange-500: #f97316;
+      --red-500: #ef4444;
+      --blue-500: #3b82f6;
+      --purple-500: #8b5cf6;
+      --font-display: 'Baloo 2', 'Noto Sans Devanagari', sans-serif;
+      --font-body: 'Noto Sans', sans-serif;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+      --radius-full: 9999px;
+    }
+
+    body { font-family: var(--font-body); }
+
+    /* scroll reveal */
+    .reveal { opacity: 0; transform: translateY(32px); transition: opacity 0.7s ease, transform 0.7s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+    .reveal-left { opacity: 0; transform: translateX(-32px); transition: opacity 0.7s ease, transform 0.7s ease; }
+    .reveal-left.visible { opacity: 1; transform: none; }
+    .reveal-right { opacity: 0; transform: translateX(32px); transition: opacity 0.7s ease, transform 0.7s ease; }
+    .reveal-right.visible { opacity: 1; transform: none; }
+
+    /* hero image ken-burns */
+    @keyframes kenBurns {
+      0%   { transform: scale(1.0) translate(0, 0); }
+      50%  { transform: scale(1.08) translate(-1%, -1%); }
+      100% { transform: scale(1.0) translate(0, 0); }
+    }
+    .kb { animation: kenBurns 20s ease-in-out infinite; }
+
+    /* hero image crossfade */
+    .hero-img {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%; object-fit: cover;
+      opacity: 0; transition: opacity 1.2s ease;
+    }
+    .hero-img.active { opacity: 1; }
+
+    /* float mic */
+    @keyframes floatMic {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-10px); }
+    }
+    .float-mic { animation: floatMic 3s ease-in-out infinite; }
+
+    /* pulse ring */
+    @keyframes pulseRing {
+      0%   { transform: scale(1); opacity: 0.6; }
+      100% { transform: scale(1.7); opacity: 0; }
+    }
+    .pulse-ring::before,
+    .pulse-ring::after {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      background: rgba(34,197,94,0.4);
+      animation: pulseRing 2s ease-out infinite;
+    }
+    .pulse-ring::after { animation-delay: 1s; }
+
+    /* typing cursor */
+    @keyframes blink { 0%,100%{ opacity:1 } 50%{ opacity:0 } }
+    .cursor { display:inline-block; width:2px; height:1em; background:#22c55e; margin-left:2px; vertical-align:middle; border-radius:2px; animation: blink 1s step-end infinite; }
+
+    /* scroll indicator */
+    @keyframes scrollDown {
+      0%   { transform: translateY(0); opacity:1; }
+      100% { transform: translateY(10px); opacity:0; }
+    }
+    .scroll-dot { animation: scrollDown 1.5s ease-in-out infinite; }
+
+    /* badge shimmer */
+    @keyframes shimmer {
+      0%   { background-position: -200% center; }
+      100% { background-position:  200% center; }
+    }
+    .badge-shimmer {
+      background: linear-gradient(90deg, #dcfce7 25%, #bbf7d0 50%, #dcfce7 75%);
+      background-size: 200% 100%;
+      animation: shimmer 2.5s linear infinite;
+    }
+
+    /* card hover lift */
+    .card-lift { transition: transform 0.35s ease, box-shadow 0.35s ease; }
+    .card-lift:hover { transform: translateY(-6px); box-shadow: 0 24px 60px rgba(0,0,0,0.12); }
+
+    /* step connector */
+    .step-line {
+      flex: 1;
+      height: 2px;
+      background: linear-gradient(90deg, #22c55e, #10b981);
+      opacity: 0.3;
+      margin: 0 8px;
+      display: none;
+    }
+    @media(min-width:768px){ .step-line { display: block; } }
+
+    /* language marquee */
+    @keyframes marquee { 0%{ transform: translateX(0) } 100%{ transform: translateX(-50%) } }
+    .marquee-inner { display: flex; animation: marquee 28s linear infinite; }
+    .marquee-inner:hover { animation-play-state: paused; }
+
+    /* stat counter pulse on enter */
+    @keyframes countUp { from { opacity:0; transform: scale(0.7); } to { opacity:1; transform: scale(1); } }
+    .stat-card.visible .stat-num { animation: countUp 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+
+    /* wave divider */
+    .wave { display:block; width:100%; overflow:hidden; line-height:0; }
+    .wave svg { display:block; }
+
+    /* mobile menu open */
+    .nav-open { display: flex !important; }
+  `}</style>
+);
+
+/* ─── Scroll reveal hook ─────────────────────────────────────────── */
+function useScrollReveal() {
+  useEffect(() => {
+    const els = document.querySelectorAll('.reveal, .reveal-left, .reveal-right');
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
+      { threshold: 0.12 }
+    );
+    els.forEach(el => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+}
+
+/* ─── Typing animation hook ──────────────────────────────────────── */
+function useTypingCycle(strings, speed = 70, pause = 2200) {
+  const [display, setDisplay] = useState('');
+  const [idx, setIdx] = useState(0);
+  const [phase, setPhase] = useState('typing'); // typing | pausing | erasing
+  const charRef = useRef(0);
+
+  useEffect(() => {
+    let timer;
+    const current = strings[idx];
+    if (phase === 'typing') {
+      if (charRef.current < current.length) {
+        timer = setTimeout(() => {
+          charRef.current += 1;
+          setDisplay(current.slice(0, charRef.current));
+        }, speed);
+      } else {
+        timer = setTimeout(() => setPhase('erasing'), pause);
+      }
+    } else {
+      if (charRef.current > 0) {
+        timer = setTimeout(() => {
+          charRef.current -= 1;
+          setDisplay(current.slice(0, charRef.current));
+        }, speed / 2);
+      } else {
+        setIdx(i => (i + 1) % strings.length);
+        setPhase('typing');
+      }
+    }
+    return () => clearTimeout(timer);
+  }, [display, phase, idx, strings, speed, pause]);
+
+  return display;
+}
+
+/* ─── Language tag pill ──────────────────────────────────────────── */
+const LangPill = ({ lang, text, color }) => (
+  <div style={{
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+    padding: '10px 20px', borderRadius: 'var(--radius-full)',
+    background: color, whiteSpace: 'nowrap', flexShrink: 0,
+    boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+  }}>
+    <span style={{ fontSize: 11, fontWeight: 600, color: '#166534', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{lang}</span>
+    <span style={{ fontSize: 15, fontWeight: 600, color: '#14532d', fontFamily: 'var(--font-display)' }}>{text}</span>
+  </div>
+);
+
+/* ─── Main Component ─────────────────────────────────────────────── */
 const HomePage = () => {
   const navigate = useNavigate();
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const heroImages = [
-    'https://images.pexels.com/photos/17101963/pexels-photo-17101963.jpeg?w=1920&h=1080&fit=crop',
-    'https://images.pexels.com/photos/2443580/pexels-photo-2443580.jpeg?w=1920&h=1080&fit=crop',
-    'https://images.pexels.com/photos/11663024/pexels-photo-11663024.jpeg?w=1920&h=1080&fit=crop',
-    'https://images.pexels.com/photos/11133417/pexels-photo-11133417.jpeg?w=1920&h=1080&fit=crop'
+    'https://images.pexels.com/photos/1459936/pexels-photo-1459936.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop',
+    'https://images.pexels.com/photos/2143693/pexels-photo-2143693.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop',
+    'https://images.pexels.com/photos/3601421/pexels-photo-3601421.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop',
+    'https://images.pexels.com/photos/3791466/pexels-photo-3791466.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop',
   ];
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % heroImages.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  const [imgIdx, setImgIdx] = useState(0);
 
   useEffect(() => {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('revealed');
-        }
-      });
-    }, { threshold: 0.1 });
-
-    document.querySelectorAll('.scroll-reveal, .scroll-reveal-up, .scroll-reveal-left, .scroll-reveal-right').forEach(el => {
-      observer.observe(el);
-    });
-
-    return () => observer.disconnect();
+    const t = setInterval(() => setImgIdx(i => (i + 1) % heroImages.length), 5000);
+    return () => clearInterval(t);
   }, []);
 
-  const features = [
-    { id: 'voice', icon: Mic, title: 'Voice First', description: 'Speak naturally in Hindi or English', color: 'from-purple-500 to-pink-500', iconBg: 'bg-purple-100', textColor: 'text-purple-600', stats: '10K+ queries/day' },
-    { id: 'agriculture', icon: Sun, title: 'Agriculture', description: 'Weather, crop prices & farming tips', color: 'from-green-500 to-emerald-500', iconBg: 'bg-green-100', textColor: 'text-green-600', stats: '50K+ farmers' },
-    { id: 'healthcare', icon: Heart, title: 'Healthcare', description: 'Health guidance & telemedicine', color: 'from-red-500 to-rose-500', iconBg: 'bg-red-100', textColor: 'text-red-600', stats: '24/7 support' },
-    { id: 'education', icon: GraduationCap, title: 'Education', description: 'Scholarships & learning resources', color: 'from-blue-500 to-cyan-500', iconBg: 'bg-blue-100', textColor: 'text-blue-600', stats: '100+ courses' },
-    { id: 'schemes', icon: Landmark, title: 'Govt Schemes', description: 'Welfare programs & benefits', color: 'from-yellow-500 to-orange-500', iconBg: 'bg-yellow-100', textColor: 'text-yellow-600', stats: '50+ schemes' },
-    { id: 'community', icon: Users, title: 'Community', description: 'Connect with local support', color: 'from-orange-500 to-red-500', iconBg: 'bg-orange-100', textColor: 'text-orange-600', stats: '100+ villages' }
+  useScrollReveal();
+
+  const taglines = [
+    'अपनी भाषा में बोलें, हम समझेंगे',
+    'आपका डिजिटल मददगार',
+    'Your voice, your rights, your future',
+    'మీ భాషలో మీ సమస్యలు చెప్పండి',
+    'உங்கள் மொழியில் கேளுங்கள்',
+  ];
+  const typedText = useTypingCycle(taglines, 65, 2000);
+
+  // Updated services - 4 main cards
+  const services = [
+    {
+      id: 'healthcare',
+      icon: Heart,
+      title: 'Healthcare',
+      titleHi: 'स्वास्थ्य सेवा',
+      description: 'Get health guidance, nearby hospital info, telemedicine support, and Ayushman Bharat scheme details.',
+      bg: 'linear-gradient(135deg,#fff1f2,#ffe4e6)',
+      accent: '#e11d48',
+      light: '#fecdd3',
+      img: 'https://images.pexels.com/photos/5214958/pexels-photo-5214958.jpeg?auto=compress&w=600&h=350&fit=crop',
+      stats: '24/7 emergency support',
+    },
+    {
+      id: 'agriculture',
+      icon: Sun,
+      title: 'Agriculture',
+      titleHi: 'कृषि सहायता',
+      description: 'Weather forecasts, mandi prices, MSP rates, fertilizer info, and expert farming tips in your local language.',
+      bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)',
+      accent: '#16a34a',
+      light: '#bbf7d0',
+      img: 'https://images.pexels.com/photos/2132180/pexels-photo-2132180.jpeg?auto=compress&w=600&h=350&fit=crop',
+      stats: '50K+ farmers helped',
+    },
+    {
+      id: 'education',
+      icon: GraduationCap,
+      title: 'Education',
+      titleHi: 'शिक्षा मार्गदर्शन',
+      description: 'Find scholarships, government schools, free courses, digital learning resources, and career guidance.',
+      bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)',
+      accent: '#2563eb',
+      light: '#bfdbfe',
+      img: 'https://images.pexels.com/photos/8471844/pexels-photo-8471844.jpeg?auto=compress&w=600&h=350&fit=crop',
+      stats: '100+ free courses',
+    },
+    {
+      id: 'schemes',
+      icon: Landmark,
+      title: 'Government Schemes',
+      titleHi: 'सरकारी योजनाएं',
+      description: 'Discover PM-KISAN, Ayushman Bharat, Ration Card, Housing schemes, and 50+ welfare programs you qualify for.',
+      bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)',
+      accent: '#d97706',
+      light: '#fde68a',
+      img: 'https://images.pexels.com/photos/8942991/pexels-photo-8942991.jpeg?auto=compress&w=600&h=350&fit=crop',
+      stats: '50+ active schemes',
+    },
   ];
 
   const impactStats = [
-    { icon: Users, value: '100K+', label: 'Active Users', color: 'from-blue-500 to-cyan-500', delay: 0 },
-    { icon: MessageCircle, value: '1M+', label: 'Queries Answered', color: 'from-green-500 to-emerald-500', delay: 100 },
-    { icon: Award, value: '50+', label: 'Govt Schemes', color: 'from-yellow-500 to-orange-500', delay: 200 },
-    { icon: Globe, value: '20+', label: 'Languages', color: 'from-purple-500 to-pink-500', delay: 300 },
-    { icon: Clock, value: '24/7', label: 'Support Available', color: 'from-red-500 to-rose-500', delay: 400 },
-    { icon: Shield, value: '100%', label: 'Free Service', color: 'from-indigo-500 to-purple-500', delay: 500 }
+    { icon: Users,         value: '100K+', label: 'Active Users',       labelHi: 'सक्रिय उपयोगकर्ता',   color: '#16a34a', bg: '#dcfce7' },
+    { icon: MessageCircle, value: '1M+',   label: 'Queries Answered',   labelHi: 'सवालों के जवाब',        color: '#2563eb', bg: '#dbeafe' },
+    { icon: Award,         value: '50+',   label: 'Govt Schemes',       labelHi: 'सरकारी योजनाएं',        color: '#d97706', bg: '#fef3c7' },
+    { icon: Globe,         value: '5+',    label: 'Indian Languages',   labelHi: 'भाषाएं',                color: '#7c3aed', bg: '#ede9fe' },
+    { icon: Clock,         value: '24/7',  label: 'Support Available',  labelHi: 'सहायता उपलब्ध',         color: '#e11d48', bg: '#ffe4e6' },
+    { icon: Shield,        value: '100%',  label: 'Free Service',       labelHi: 'मुफ़्त सेवा',            color: '#0d9488', bg: '#ccfbf1' },
   ];
 
-  const testimonials = [
-    {
-      name: 'Ram Singh',
-      role: 'Farmer, Uttar Pradesh',
-      image: 'https://randomuser.me/api/portraits/men/32.jpg',
-      content: 'Sahaayak AI helped me get PM-KISAN benefits. The voice feature is so easy to use!',
-      rating: 5,
-      achievement: 'Received ₹6000 scheme benefit'
-    },
-    {
-      name: 'Sneha Sharma',
-      role: 'Student, Bihar',
-      image: 'https://randomuser.me/api/portraits/women/68.jpg',
-      content: 'I found scholarship information easily. The app speaks in Hindi which helps my mother too!',
-      rating: 5,
-      achievement: 'Got education scholarship'
-    },
-    {
-      name: 'Lakshmi Bai',
-      role: 'Self-help Group, MP',
-      image: 'https://randomuser.me/api/portraits/women/45.jpg',
-      content: 'Healthcare information helped my family during emergency. Very grateful for this service!',
-      rating: 5,
-      achievement: 'Accessed emergency care'
-    }
+  const langPills = [
+    { lang: 'हिन्दी',   text: 'आपका मददगार',          color: '#dcfce7' },
+    { lang: 'English',  text: 'Your Helper',           color: '#dbeafe' },
+    { lang: 'मराठी',   text: 'तुमचा मदतगार',           color: '#fef3c7' },
+    { lang: 'తెలుగు',  text: 'మీ సహాయకుడు',           color: '#ede9fe' },
+    { lang: 'தமிழ்',   text: 'உங்கள் உதவியாளர்',      color: '#ffe4e6' },
+    { lang: 'বাংলা',   text: 'আপনার সাহায্যকারী',     color: '#ccfbf1' },
+  ];
+
+  const steps = [
+    { num: '01', icon: Mic,       label: 'Press & Speak', labelHi: 'बोलें', color: '#16a34a', bg: '#dcfce7',
+      desc: 'Just tap the mic and speak naturally. No typing or reading needed.', img: '🎙️' },
+    { num: '02', icon: Zap,       label: 'AI Understands', labelHi: 'AI समझेगा', color: '#7c3aed', bg: '#ede9fe',
+      desc: 'Our AI understands your dialect, corrects errors and finds the right answer.', img: '🤖' },
+    { num: '03', icon: CheckCircle, label: 'Get Help', labelHi: 'मदद पाएं', color: '#2563eb', bg: '#dbeafe',
+      desc: 'Receive answers in audio so even non-readers can benefit instantly.', img: '✅' },
+  ];
+
+  const whyItems = [
+    { icon: '🗣️', text: 'Voice-first in 5+ Indian languages' },
+    { icon: '📶', text: 'Works on 2G & offline mode for remote areas' },
+    { icon: '🆓', text: '100% free — no hidden costs, ever' },
+    { icon: '🌙', text: '24/7 support including emergency helplines' },
+    { icon: '🧒', text: 'Kid-friendly visuals and simple audio answers' },
+    { icon: '🔒', text: 'Your data stays private & secure' },
   ];
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Hero Section */}
-      <div className="relative h-screen flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <img 
-            src={heroImages[currentImageIndex]}
-            alt="Rural India"
-            className="w-full h-full object-cover"
-            style={{ animation: 'kenBurns 20s ease-in-out infinite' }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/70"></div>
-        </div>
+    <div style={{ fontFamily: 'var(--font-body)', background: '#fff', overflowX: 'hidden' }}>
+      <GlobalStyles />
 
-        <div className="relative z-10 container mx-auto px-4 text-center text-white">
-          <div className="animate-float inline-block mb-6">
-            <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-full p-5 shadow-2xl">
-              <Mic size={56} className="text-white" />
+      {/* ── HERO ──────────────────────────────────────────────────── */}
+      <section style={{ position: 'relative', height: '100vh', minHeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        {heroImages.map((src, i) => (
+          <img key={i} src={src} alt="" className={`hero-img kb ${i === imgIdx ? 'active' : ''}`} />
+        ))}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(0,0,0,0.75) 0%, rgba(0,30,0,0.55) 50%, rgba(0,0,0,0.7) 100%)' }} />
+        <div style={{ position: 'absolute', top: '10%', right: '5%', width: 320, height: 320, borderRadius: '50%', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)' }} />
+        <div style={{ position: 'absolute', bottom: '15%', left: '3%', width: 200, height: 200, borderRadius: '50%', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.12)' }} />
+
+        <div style={{ position: 'relative', zIndex: 10, textAlign: 'center', padding: '0 24px', maxWidth: 800, margin: '0 auto' }}>
+          <div style={{ position: 'relative', display: 'inline-block', marginBottom: 32 }} className="float-mic pulse-ring">
+            <div style={{
+              width: 96, height: 96, borderRadius: '50%',
+              background: 'linear-gradient(135deg,#22c55e,#10b981)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 0 0 8px rgba(34,197,94,0.2)',
+            }}>
+              <Mic size={44} color="#fff" />
             </div>
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold mb-4 animate-slide-up">
+
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2.6rem,6vw,4.5rem)', fontWeight: 800, color: '#fff', lineHeight: 1.15, letterSpacing: '-0.01em', marginBottom: 12 }}>
             Sahaayak AI
           </h1>
-          <p className="text-2xl text-green-200 mb-2 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-            आपका मददगार
+          <div style={{ fontSize: 'clamp(1.1rem,2.5vw,1.6rem)', color: '#86efac', fontFamily: 'var(--font-display)', fontWeight: 600, marginBottom: 8, minHeight: '2.2em', letterSpacing: '0.01em' }}>
+            {typedText}<span className="cursor" />
+          </div>
+          <p style={{ fontSize: 'clamp(0.95rem,2vw,1.15rem)', color: 'rgba(255,255,255,0.7)', marginBottom: 36 }}>
+            Voice AI for every village in India
           </p>
-          <p className="text-xl text-white/80 mb-8 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-            Voice Assistant for Rural India
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{ animationDelay: '0.3s' }}>
-            <button 
+
+          <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 52 }}>
+            <button
               onClick={() => navigate('/login')}
-              className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-8 py-3 rounded-full font-semibold hover:shadow-2xl transition-all duration-300 transform hover:scale-105 inline-flex items-center gap-2 shadow-lg"
+              style={{
+                background: 'linear-gradient(135deg,#22c55e,#10b981)', color: '#fff',
+                border: 'none', padding: '14px 36px', borderRadius: 'var(--radius-full)',
+                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                boxShadow: '0 8px 32px rgba(34,197,94,0.45)',
+                transition: 'transform 0.2s,box-shadow 0.2s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 14px 40px rgba(34,197,94,0.55)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 8px 32px rgba(34,197,94,0.45)'; }}
             >
-              Get Started <Play size={18} />
+              शुरू करें &nbsp;/ Get Started <Play size={18} />
             </button>
-            <button className="bg-white/20 backdrop-blur-sm text-white px-8 py-3 rounded-full font-semibold hover:bg-white/30 transition-all duration-300 inline-flex items-center gap-2 border border-white/30">
+            <button
+              style={{
+                background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)',
+                color: '#fff', border: '1.5px solid rgba(255,255,255,0.3)',
+                padding: '14px 36px', borderRadius: 'var(--radius-full)',
+                fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 17,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.2)'}
+              onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'}
+            >
               Watch Demo <ArrowRight size={18} />
             </button>
           </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16 pt-8 border-t border-white/20">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-300">100K+</div>
-              <div className="text-sm text-white/70">Active Users</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-300">500+</div>
-              <div className="text-sm text-white/70">Villages</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-300">20+</div>
-              <div className="text-sm text-white/70">Languages</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-300">24/7</div>
-              <div className="text-sm text-white/70">Support</div>
-            </div>
+
+          <div style={{
+            display: 'flex', gap: 0, justifyContent: 'center', flexWrap: 'wrap',
+            borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: 28,
+          }}>
+            {[['100%','Free'],['5+','Languages'],['50+','Govt Schemes'],['24/7','Support']].map(([v,l],i) => (
+              <div key={i} style={{ padding: '0 28px', textAlign: 'center', borderRight: i<3 ? '1px solid rgba(255,255,255,0.15)' : 'none' }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#86efac', fontFamily: 'var(--font-display)' }}>{v}</div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>{l}</div>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 border-2 border-white rounded-full flex justify-center">
-            <div className="w-1 h-2 bg-white rounded-full mt-2 animate-pulse"></div>
+        <div style={{ position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 26, height: 42, border: '2px solid rgba(255,255,255,0.4)', borderRadius: 13, display: 'flex', justifyContent: 'center', paddingTop: 7 }}>
+            <div className="scroll-dot" style={{ width: 4, height: 8, borderRadius: 2, background: '#86efac' }} />
           </div>
+        </div>
+      </section>
+
+      {/* ── LANGUAGE MARQUEE ─────────────────────────────────────── */}
+      <div style={{ background: '#f0fdf4', borderTop: '1px solid #bbf7d0', borderBottom: '1px solid #bbf7d0', padding: '18px 0', overflow: 'hidden' }}>
+        <div className="marquee-inner" style={{ gap: 14 }}>
+          {[...langPills, ...langPills, ...langPills, ...langPills].map((p, i) => (
+            <LangPill key={i} {...p} />
+          ))}
         </div>
       </div>
 
-      {/* Features Section - Modern Cards */}
-      <div className="py-24 bg-gradient-to-br from-gray-50 to-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <div className="inline-block bg-green-100 rounded-full px-4 py-1 mb-4">
-              <span className="text-green-600 text-sm font-semibold">✨ Our Services</span>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4 scroll-reveal-up">
-              Everything You Need in One Place
+      {/* ── SERVICES SECTION (4 main cards) ──────────────────────── */}
+      <section style={{ padding: '96px 24px', background: '#fff' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 60 }}>
+            <span className="badge-shimmer reveal" style={{ display: 'inline-block', padding: '6px 18px', borderRadius: 'var(--radius-full)', fontSize: 13, fontWeight: 700, color: '#15803d', letterSpacing: '0.06em', marginBottom: 14 }}>
+              OUR SERVICES
+            </span>
+            <h2 className="reveal" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem,4vw,3rem)', fontWeight: 800, color: '#14532d', marginBottom: 14, lineHeight: 1.2 }}>
+              जो आपको चाहिए, बस एक टैप पे · What You Need, One Tap Away
             </h2>
-            <p className="text-gray-500 text-lg max-w-2xl mx-auto scroll-reveal-up">
-              Voice-first assistance for agriculture, healthcare, education, and government schemes
+            <p className="reveal" style={{ color: '#6b7280', fontSize: 17, maxWidth: 580, margin: '0 auto' }}>
+              Voice-powered help for farming, health, education and government schemes
             </p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 28 }}>
+            {services.map((service, i) => (
               <div
-                key={feature.id}
-                onClick={() => navigate('/login')}
-                className="group cursor-pointer scroll-reveal-up"
-                style={{ transitionDelay: `${index * 100}ms` }}
+                key={service.id}
+                className="reveal card-lift"
+                style={{ transitionDelay: `${i * 100}ms`, borderRadius: 'var(--radius-xl)', overflow: 'hidden', background: service.bg, border: `1.5px solid ${service.light}`, cursor: 'pointer' }}
+                onClick={() => navigate(service.path)}
               >
-                <div className="relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden">
-                  <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${feature.color} opacity-10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500`}></div>
-                  <div className="p-8">
-                    <div className={`w-16 h-16 ${feature.iconBg} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                      <feature.icon size={32} className={feature.textColor} />
+                <div style={{ height: 200, overflow: 'hidden', position: 'relative' }}>
+                  <img src={service.img} alt={service.title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.06)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = ''}
+                  />
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%)' }} />
+                  <div style={{ position: 'absolute', top: 16, left: 16, width: 48, height: 48, borderRadius: 14, background: service.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
+                    <service.icon size={26} color="#fff" />
+                  </div>
+                </div>
+                <div style={{ padding: '24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, color: '#14532d' }}>{service.title}</h3>
+                    <span style={{ fontSize: 16, color: service.accent, fontFamily: 'var(--font-display)', fontWeight: 600 }}>{service.titleHi}</span>
+                  </div>
+                  <p style={{ color: '#374151', fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>{service.description}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 12, color: service.accent, fontWeight: 600, background: service.light, padding: '5px 14px', borderRadius: 'var(--radius-full)' }}>{service.stats}</span>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: service.light, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 0.2s' }}>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-800 mb-2">{feature.title}</h3>
-                    <p className="text-gray-500 mb-4">{feature.description}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-400">{feature.stats}</span>
-                      <span className={`${feature.textColor} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}>
-                        <ChevronRight size={18} />
-                      </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── IMPACT STATS ─────────────────────────────────────────── */}
+      <section style={{ padding: '96px 24px', background: 'linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 100%)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: -80, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'rgba(34,197,94,0.07)' }} />
+        <div style={{ position: 'absolute', bottom: -60, left: -60, width: 300, height: 300, borderRadius: '50%', background: 'rgba(16,185,129,0.07)' }} />
+
+        <div style={{ maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+          <div style={{ textAlign: 'center', marginBottom: 56 }}>
+            <span className="reveal" style={{ display: 'inline-block', padding: '6px 18px', borderRadius: 'var(--radius-full)', fontSize: 13, fontWeight: 700, color: '#15803d', background: '#bbf7d0', letterSpacing: '0.06em', marginBottom: 14 }}>
+              📊 OUR IMPACT
+            </span>
+            <h2 className="reveal" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.8rem,3.5vw,2.8rem)', fontWeight: 800, color: '#14532d', marginBottom: 12 }}>
+              असली बदलाव · Real Change in Rural India
+            </h2>
+            <p className="reveal" style={{ color: '#4b7c5e', fontSize: 17, maxWidth: 520, margin: '0 auto' }}>
+              Measurable impact on the ground, one village at a time
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 20 }}>
+            {impactStats.map((s, i) => (
+              <div
+                key={i}
+                className={`reveal stat-card card-lift`}
+                style={{ transitionDelay: `${i*80}ms`, background: '#fff', borderRadius: 'var(--radius-lg)', padding: '28px 20px', textAlign: 'center', border: `1.5px solid ${s.bg}`, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
+              >
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                  <s.icon size={24} color={s.color} />
+                </div>
+                <div className="stat-num" style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, color: '#14532d', marginBottom: 4 }}>{s.value}</div>
+                <p style={{ color: '#6b7280', fontSize: 13, lineHeight: 1.4 }}>{s.label}</p>
+                <p style={{ color: s.color, fontSize: 12, fontFamily: 'var(--font-display)', fontWeight: 600 }}>{s.labelHi}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ─────────────────────────────────────────── */}
+      <section style={{ padding: '96px 24px', background: '#fff' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 60 }}>
+            <span className="reveal" style={{ display: 'inline-block', padding: '6px 18px', borderRadius: 'var(--radius-full)', fontSize: 13, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', letterSpacing: '0.06em', marginBottom: 14 }}>
+              🚀 HOW IT WORKS
+            </span>
+            <h2 className="reveal" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.8rem,3.5vw,2.8rem)', fontWeight: 800, color: '#1e3a5f', marginBottom: 12 }}>
+              3 आसान कदम · 3 Simple Steps
+            </h2>
+            <p className="reveal" style={{ color: '#6b7280', fontSize: 17, maxWidth: 480, margin: '0 auto' }}>
+              No smartphone expertise needed. Even first-time users can get help in under 60 seconds.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0, flexWrap: 'wrap', justifyContent: 'center' }}>
+            {steps.map((step, i) => (
+              <React.Fragment key={step.num}>
+                <div className="reveal" style={{ transitionDelay: `${i*120}ms`, flex: '1 1 260px', maxWidth: 320, textAlign: 'center', padding: '0 16px' }}>
+                  <div style={{ position: 'relative', display: 'inline-block', marginBottom: 20 }}>
+                    <div style={{ width: 100, height: 100, borderRadius: 'var(--radius-xl)', background: step.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, border: `2px solid ${step.light || step.bg}`, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}>
+                      {step.img}
+                    </div>
+                    <div style={{ position: 'absolute', top: -8, right: -8, width: 28, height: 28, borderRadius: '50%', background: step.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 800, fontFamily: 'var(--font-display)' }}>
+                      {step.num.slice(1)}
                     </div>
                   </div>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, color: '#14532d', marginBottom: 4 }}>{step.label}</h3>
+                  <p style={{ fontFamily: 'var(--font-display)', color: step.color, fontWeight: 600, fontSize: 15, marginBottom: 10 }}>{step.labelHi}</p>
+                  <p style={{ color: '#6b7280', fontSize: 14.5, lineHeight: 1.65 }}>{step.desc}</p>
                 </div>
-              </div>
+                {i < steps.length - 1 && (
+                  <div className="step-line" style={{ alignSelf: 'center', marginBottom: 60 }} />
+                )}
+              </React.Fragment>
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Impact Section - Modern Stats Cards */}
-      <div className="py-24 bg-gradient-to-br from-green-50 to-emerald-50">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <div className="inline-block bg-green-200 rounded-full px-4 py-1 mb-4">
-              <span className="text-green-700 text-sm font-semibold">📊 Our Impact</span>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4 scroll-reveal-up">
-              Making a Difference in Rural India
+      {/* ── WHY SAHAAYAK ─────────────────────────────────────────── */}
+      <section style={{ padding: '96px 24px', background: 'linear-gradient(135deg,#f9fafb,#f0fdf4)' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(420px,1fr))', gap: 52, alignItems: 'center' }}>
+          <div className="reveal-left">
+            <span style={{ display: 'inline-block', padding: '6px 18px', borderRadius: 'var(--radius-full)', fontSize: 13, fontWeight: 700, color: '#15803d', background: '#dcfce7', letterSpacing: '0.06em', marginBottom: 20 }}>
+              🌟 WHY CHOOSE US
+            </span>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.7rem,3vw,2.5rem)', fontWeight: 800, color: '#14532d', marginBottom: 16, lineHeight: 1.25 }}>
+              Designed for Every<br/>Indian Village
             </h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto scroll-reveal-up">
-              Real impact on the ground with measurable results
+            <p style={{ color: '#6b7280', fontSize: 16, lineHeight: 1.7, marginBottom: 28 }}>
+              Sahaayak AI was built from the ground up for people who may not be tech-savvy, may not read well, or live in areas with poor connectivity. Simple, local, powerful.
             </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {whyItems.map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 18px', background: '#fff', borderRadius: 'var(--radius-md)', border: '1.5px solid #dcfce7', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                  <span style={{ fontSize: 24, flexShrink: 0 }}>{item.icon}</span>
+                  <span style={{ color: '#374151', fontSize: 15, fontWeight: 500 }}>{item.text}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {impactStats.map((stat, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-2xl p-8 text-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 scroll-reveal-up"
-                style={{ transitionDelay: `${stat.delay}ms` }}
-              >
-                <div className={`w-20 h-20 bg-gradient-to-r ${stat.color} rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg`}>
-                  <stat.icon size={32} className="text-white" />
+          <div className="reveal-right" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{ background: 'linear-gradient(135deg,#14532d,#166534)', borderRadius: 'var(--radius-xl)', padding: '32px 28px', color: '#fff', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Mic size={26} color="#86efac" />
                 </div>
-                <div className="text-4xl font-bold text-gray-800 mb-2">{stat.value}</div>
-                <p className="text-gray-500 font-medium">{stat.label}</p>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18 }}>Voice Query Demo</div>
+                  <div style={{ color: '#86efac', fontSize: 13 }}>Live example</div>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
+              <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 'var(--radius-md)', padding: '14px 16px', marginBottom: 12, fontSize: 15, color: '#d1fae5' }}>
+                👨‍🌾 "मेरी फसल के लिए सरकारी मदद कैसे मिलेगी?"
+              </div>
+              <div style={{ background: 'rgba(34,197,94,0.2)', borderRadius: 'var(--radius-md)', padding: '14px 16px', fontSize: 15, color: '#bbf7d0', borderLeft: '3px solid #4ade80' }}>
+                🤖 PM-KISAN योजना में ₹6000 सालाना मिलते हैं। आवेदन के लिए आधार और खाता नंबर चाहिए…
+              </div>
+            </div>
 
-      {/* How It Works Section */}
-      <div className="py-24 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <div className="inline-block bg-blue-100 rounded-full px-4 py-1 mb-4">
-              <span className="text-blue-600 text-sm font-semibold">🚀 How It Works</span>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4 scroll-reveal-up">
-              Simple Steps to Get Started
-            </h2>
-            <p className="text-gray-500 text-lg max-w-2xl mx-auto scroll-reveal-up">
-              Just three simple steps to access all services
-            </p>
-          </div>
-          
-          <div className="flex flex-col md:flex-row justify-around items-center gap-8">
-            <div className="text-center scroll-reveal-up" style={{ transitionDelay: '0s' }}>
-              <div className="relative">
-                <div className="w-28 h-28 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg transform rotate-6 group-hover:rotate-0 transition-transform">
-                  <span className="text-4xl text-white">1️⃣</span>
-                </div>
-                <div className="absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
+            <div style={{ background: '#fff', borderRadius: 'var(--radius-xl)', padding: '24px 28px', border: '1.5px solid #bbf7d0', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <Zap size={20} color="#f59e0b" />
+                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, color: '#14532d' }}>आने वाला है · Coming Soon</span>
               </div>
-              <p className="font-bold text-gray-800 text-lg mt-4">Press Mic</p>
-              <p className="text-gray-500">माइक दबाएं</p>
-            </div>
-            <ChevronRight size={40} className="text-green-500 hidden md:block animate-pulse" />
-            <div className="text-center scroll-reveal-up" style={{ transitionDelay: '0.2s' }}>
-              <div className="relative">
-                <div className="w-28 h-28 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg transform -rotate-6 group-hover:rotate-0 transition-transform">
-                  <span className="text-4xl text-white">2️⃣</span>
-                </div>
-                <div className="absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold">2</div>
-              </div>
-              <p className="font-bold text-gray-800 text-lg mt-4">Speak</p>
-              <p className="text-gray-500">बोलें</p>
-            </div>
-            <ChevronRight size={40} className="text-green-500 hidden md:block animate-pulse" />
-            <div className="text-center scroll-reveal-up" style={{ transitionDelay: '0.4s' }}>
-              <div className="relative">
-                <div className="w-28 h-28 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg transform rotate-3 group-hover:rotate-0 transition-transform">
-                  <span className="text-4xl text-white">3️⃣</span>
-                </div>
-                <div className="absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold">3</div>
-              </div>
-              <p className="font-bold text-gray-800 text-lg mt-4">Get Answer</p>
-              <p className="text-gray-500">जवाब पाएं</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Testimonials Section */}
-      <div className="py-24 bg-gradient-to-br from-gray-50 to-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <div className="inline-block bg-yellow-100 rounded-full px-4 py-1 mb-4">
-              <span className="text-yellow-600 text-sm font-semibold">⭐ Testimonials</span>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4 scroll-reveal-up">
-              What Our Users Say
-            </h2>
-            <p className="text-gray-500 text-lg max-w-2xl mx-auto scroll-reveal-up">
-              Trusted by rural communities across India
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 scroll-reveal-up"
-                style={{ transitionDelay: `${index * 100}ms` }}
-              >
-                <div className="flex items-center gap-4 mb-4">
-                  <img src={testimonial.image} alt={testimonial.name} className="w-14 h-14 rounded-full object-cover" />
-                  <div>
-                    <p className="font-bold text-gray-800">{testimonial.name}</p>
-                    <p className="text-sm text-gray-500">{testimonial.role}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {['Offline-first mode for no internet areas','AI scheme matching by village & income','Real-time weather alerts via SMS','Kids learning games in local language'].map((t,i) => (
+                  <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 14, color: '#374151' }}>
+                    <span style={{ color: '#22c55e', fontWeight: 700, flexShrink: 0 }}>→</span> {t}
                   </div>
-                </div>
-                <div className="flex mb-3">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} size={16} className="text-yellow-500 fill-current" />
-                  ))}
-                </div>
-                <p className="text-gray-600 mb-3">"{testimonial.content}"</p>
-                <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                  <CheckCircle size={14} className="text-green-500" />
-                  <p className="text-xs text-green-600">{testimonial.achievement}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Features Highlight Section */}
-      <div className="py-24 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="scroll-reveal-left">
-              <div className="inline-block bg-green-100 rounded-full px-4 py-1 mb-4">
-                <span className="text-green-600 text-sm font-semibold">🌟 Why Choose Us</span>
-              </div>
-              <h2 className="text-4xl font-bold text-gray-800 mb-4">
-                Empowering Rural Communities Through Technology
-              </h2>
-              <p className="text-gray-500 mb-6">
-                Sahaayak AI bridges the digital divide by providing voice-first assistance in local languages, making essential services accessible to everyone.
-              </p>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <CheckCircle size={16} className="text-green-600" />
-                  </div>
-                  <span className="text-gray-700">Voice-first interface in 20+ languages</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <CheckCircle size={16} className="text-green-600" />
-                  </div>
-                  <span className="text-gray-700">Offline access to cached information</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <CheckCircle size={16} className="text-green-600" />
-                  </div>
-                  <span className="text-gray-700">100% free with no hidden costs</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <CheckCircle size={16} className="text-green-600" />
-                  </div>
-                  <span className="text-gray-700">24/7 support and emergency helplines</span>
-                </div>
-              </div>
-            </div>
-            <div className="scroll-reveal-right">
-              <div className="bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl p-8 text-white">
-                <Zap size={48} className="mb-4" />
-                <h3 className="text-2xl font-bold mb-2">Coming Soon!</h3>
-                <p className="text-green-100 mb-4">Exciting new features on the way</p>
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">• Offline-first architecture</li>
-                  <li className="flex items-center gap-2">• AI-powered scheme recommendations</li>
-                  <li className="flex items-center gap-2">• Real-time weather alerts for farmers</li>
-                  <li className="flex items-center gap-2">• Community support forums</li>
-                </ul>
+                ))}
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* CTA Section */}
-      <div className="py-24 bg-gradient-to-r from-green-600 to-emerald-600">
-        <div className="container mx-auto px-4 text-center">
-          <div className="max-w-3xl mx-auto">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 scroll-reveal-up">
-              Ready to Transform Your Life?
-            </h2>
-            <p className="text-green-100 text-lg mb-8 scroll-reveal-up">
-              Join thousands of rural citizens accessing government services with just a tap
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button 
-                onClick={() => navigate('/login')}
-                className="bg-white text-green-700 px-10 py-4 rounded-full font-bold hover:shadow-2xl transition-all duration-300 transform hover:scale-105 inline-flex items-center justify-center gap-2"
-              >
-                Get Started Now <Sparkles size={18} />
-              </button>
-              <button className="bg-transparent border-2 border-white text-white px-10 py-4 rounded-full font-bold hover:bg-white/10 transition-all duration-300 inline-flex items-center justify-center gap-2">
-                Contact Sales <Phone size={18} />
-              </button>
-            </div>
-            <p className="text-green-200 text-sm mt-8">
-              No credit card required • Free forever • Cancel anytime
-            </p>
+      {/* ── CTA ──────────────────────────────────────────────────── */}
+      <section style={{ padding: '100px 24px', background: 'linear-gradient(135deg,#14532d 0%,#166534 40%,#15803d 100%)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: -100, left: -100, width: 500, height: 500, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+        <div style={{ position: 'absolute', bottom: -80, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+
+        <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+          <div className="reveal" style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 28px' }}>
+            <Sparkles size={34} color="#86efac" />
           </div>
+          <h2 className="reveal" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem,4vw,3rem)', fontWeight: 800, color: '#fff', marginBottom: 14 }}>
+            अभी शुरू करें · Join the Movement
+          </h2>
+          <p className="reveal" style={{ color: '#86efac', fontSize: 18, marginBottom: 10 }}>
+            Thousands of farmers, students and families are already getting help.
+          </p>
+          <p className="reveal" style={{ color: 'rgba(255,255,255,0.6)', fontSize: 15, marginBottom: 40 }}>
+            हज़ारों किसान, बच्चे और परिवार पहले से इसका फ़ायदा उठा रहे हैं।
+          </p>
+          <div className="reveal" style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 28 }}>
+            <button
+              onClick={() => navigate('/login')}
+              style={{
+                background: '#fff', color: '#15803d',
+                border: 'none', padding: '16px 44px', borderRadius: 'var(--radius-full)',
+                fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
+                boxShadow: '0 8px 40px rgba(0,0,0,0.2)',
+                transition: 'transform 0.2s,box-shadow 0.2s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow='0 16px 50px rgba(0,0,0,0.3)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 8px 40px rgba(0,0,0,0.2)'; }}
+            >
+              Get Started Free <Sparkles size={20} />
+            </button>
+            <button
+              style={{
+                background: 'transparent', color: '#fff',
+                border: '2px solid rgba(255,255,255,0.4)', padding: '16px 36px', borderRadius: 'var(--radius-full)',
+                fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                transition: 'border-color 0.2s,background 0.2s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.7)'; e.currentTarget.style.background='rgba(255,255,255,0.08)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.4)'; e.currentTarget.style.background='transparent'; }}
+            >
+              <Phone size={18} /> Contact Us
+            </button>
+          </div>
+          <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13 }}>
+            No credit card · No registration fees · Always free
+          </p>
         </div>
-      </div>
+      </section>
     </div>
   );
 };
