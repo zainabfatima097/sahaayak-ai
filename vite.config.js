@@ -2,21 +2,23 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      // This helps with Fast Refresh
+      fastRefresh: true,
+      // Exclude context files from Fast Refresh to prevent warnings
+      exclude: [/UserContext\.[jt]sx?$/, /OfflineContext\.[jt]sx?$/]
+    })
+  ],
   server: {
     port: 5173,
-    host: true
+    host: true,
+    hmr: {
+      overlay: false
+    }
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore']
-        }
-      }
-    }
+    sourcemap: true
   }
 })
