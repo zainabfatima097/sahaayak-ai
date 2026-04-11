@@ -1,5 +1,4 @@
-import React from 'react';
-import { Phone, MapPin, FileText, ExternalLink, CheckCircle } from 'lucide-react';
+import { Phone, MapPin, FileText, CheckCircle } from 'lucide-react';
 
 const ActionableCard = ({ title, description, actionable, onAction }) => {
   const handleCall = (phoneNumber) => {
