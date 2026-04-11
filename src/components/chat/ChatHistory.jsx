@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { 
   MessageCircle, Trash2, Edit2, Check, X, Clock, 
-  Calendar, ChevronRight, FolderOpen, Plus
+  Plus, FolderOpen
 } from 'lucide-react';
-import { getUserChatSessions, deleteChatSession, renameChatSession } from '../../services/firebase/config';
+import { db, collection, query, where, getDocs, deleteDoc, doc, updateDoc } from '../../components/services/firebase/config';
 import { useUserContext } from '../../context/UserContext';
 
+// This component now ONLY renders the list of chats, no header
 const ChatHistory = ({ domain, onSelectSession, currentSessionId, onNewChat }) => {
   const [sessions, setSessions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -14,28 +14,67 @@ const ChatHistory = ({ domain, onSelectSession, currentSessionId, onNewChat }) =
   const [editingTitle, setEditingTitle] = useState('');
   const { userContext } = useUserContext();
 
+  const domainConfig = {
+    agriculture: { color: '#15803d', lightBg: '#dcfce7' },
+    healthcare:  { color: '#dc2626', lightBg: '#fee2e2' },
+    education:   { color: '#1d4ed8', lightBg: '#dbeafe' },
+    schemes:     { color: '#b45309', lightBg: '#fef3c7' },
+    general:     { color: '#6d28d9', lightBg: '#ede9fe' },
+  };
+  const config = domainConfig[domain] || domainConfig.general;
+
   useEffect(() => {
-    loadChatSessions();
+    if (userContext.isAuthenticated && userContext.uid) {
+      loadChatSessions();
+    }
   }, [domain, userContext.uid]);
 
   const loadChatSessions = async () => {
     setIsLoading(true);
-    const result = await getUserChatSessions(userContext.uid, domain);
-    if (result.success) {
-      setSessions(result.sessions);
+    try {
+      const sessionsRef = collection(db, 'chat_sessions');
+      const q = query(
+        sessionsRef,
+        where('userId', '==', userContext.uid),
+        where('domain', '==', domain)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const loadedSessions = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        loadedSessions.push({ 
+          id: doc.id, 
+          ...data,
+          updatedAt: data.updatedAt?.toDate?.() || data.updatedAt || new Date(),
+          createdAt: data.createdAt?.toDate?.() || data.createdAt || new Date()
+        });
+      });
+      
+      loadedSessions.sort((a, b) => b.updatedAt - a.updatedAt);
+      setSessions(loadedSessions);
+    } catch (error) {
+      console.error('Error loading chat sessions:', error);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleDelete = async (sessionId, e) => {
     e.stopPropagation();
     if (window.confirm('Delete this chat session?')) {
-      const result = await deleteChatSession(sessionId);
-      if (result.success) {
+      try {
+        const messagesQuery = query(collection(db, 'chat_messages'), where('sessionId', '==', sessionId));
+        const messagesSnapshot = await getDocs(messagesQuery);
+        const deletePromises = messagesSnapshot.docs.map(doc => deleteDoc(doc.ref));
+        await Promise.all(deletePromises);
+        await deleteDoc(doc(db, 'chat_sessions', sessionId));
         setSessions(sessions.filter(s => s.id !== sessionId));
         if (currentSessionId === sessionId && onNewChat) {
           onNewChat();
         }
+      } catch (error) {
+        console.error('Error deleting session:', error);
       }
     }
   };
@@ -44,11 +83,12 @@ const ChatHistory = ({ domain, onSelectSession, currentSessionId, onNewChat }) =
     e.stopPropagation();
     if (editingId === sessionId) {
       if (editingTitle.trim()) {
-        const result = await renameChatSession(sessionId, editingTitle);
-        if (result.success) {
-          setSessions(sessions.map(s => 
-            s.id === sessionId ? { ...s, title: editingTitle } : s
-          ));
+        try {
+          const sessionRef = doc(db, 'chat_sessions', sessionId);
+          await updateDoc(sessionRef, { title: editingTitle, updatedAt: new Date() });
+          setSessions(sessions.map(s => s.id === sessionId ? { ...s, title: editingTitle } : s));
+        } catch (error) {
+          console.error('Error renaming session:', error);
         }
       }
       setEditingId(null);
@@ -60,121 +100,122 @@ const ChatHistory = ({ domain, onSelectSession, currentSessionId, onNewChat }) =
     }
   };
 
-  const formatDate = (timestamp) => {
-    const date = timestamp.toDate();
+  const formatDate = (date) => {
+    if (!date) return 'Recently';
     const now = new Date();
     const diff = now - date;
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
     
-    if (days === 0) return 'Today';
+    if (days === 0) {
+      if (hours === 0) return 'Just now';
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    }
     if (days === 1) return 'Yesterday';
     if (days < 7) return `${days} days ago`;
     return date.toLocaleDateString();
   };
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="px-3 py-4">
-        <div className="flex items-center justify-between mb-3 px-2">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            Recent Chats
-          </h3>
-          <button 
-            onClick={onNewChat}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-            title="New Chat"
-          >
-            <Plus size={14} className="text-gray-500" />
-          </button>
+    <div style={{ marginTop: 4 }}>
+      {/* New Chat button inside dropdown */}
+      <button
+        onClick={onNewChat}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '8px 12px',
+          borderRadius: 8,
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          color: config.color,
+          fontSize: 12,
+          fontWeight: 500,
+          transition: 'background 0.2s',
+          marginBottom: 4
+        }}
+        onMouseEnter={e => e.currentTarget.style.background = config.lightBg}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+      >
+        <Plus size={12} />
+        <span>New {domain} chat</span>
+      </button>
+
+      {isLoading ? (
+        <div style={{ padding: '8px 12px' }}>
+          <div style={{ height: 32, background: '#f3f4f6', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
         </div>
-        
-        {isLoading ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="animate-pulse">
-                <div className="h-12 bg-gray-100 rounded-lg"></div>
-              </div>
-            ))}
-          </div>
-        ) : sessions.length === 0 ? (
-          <div className="text-center py-8">
-            <FolderOpen size={32} className="text-gray-300 mx-auto mb-2" />
-            <p className="text-xs text-gray-400">No chat history</p>
-            <p className="text-xs text-gray-400 mt-1">Start a new conversation</p>
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {sessions.map((session) => (
-              <div
-                key={session.id}
-                onClick={() => onSelectSession(session.id)}
-                className={`group relative p-2 rounded-lg cursor-pointer transition-all duration-200 ${
-                  currentSessionId === session.id
-                    ? 'bg-green-50 border border-green-200'
-                    : 'hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-start gap-2">
-                  <MessageCircle size={14} className={`mt-0.5 flex-shrink-0 ${
-                    currentSessionId === session.id ? 'text-green-600' : 'text-gray-400'
-                  }`} />
-                  <div className="flex-1 min-w-0">
-                    {editingId === session.id ? (
-                      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                        <input
-                          type="text"
-                          value={editingTitle}
-                          onChange={(e) => setEditingTitle(e.target.value)}
-                          className="flex-1 text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:border-green-500"
-                          autoFocus
-                        />
-                        <button onClick={(e) => handleRename(session.id, e)} className="p-0.5 hover:bg-green-100 rounded">
-                          <Check size={12} className="text-green-600" />
-                        </button>
-                        <button onClick={() => setEditingId(null)} className="p-0.5 hover:bg-red-100 rounded">
-                          <X size={12} className="text-red-600" />
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <p className={`text-sm font-medium truncate ${
-                          currentSessionId === session.id ? 'text-green-700' : 'text-gray-700'
-                        }`}>
-                          {session.title}
-                        </p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <div className="flex items-center gap-1">
-                            <Clock size={10} className="text-gray-400" />
-                            <span className="text-xs text-gray-400">{formatDate(session.updatedAt)}</span>
-                          </div>
-                          <span className="text-xs text-gray-400">•</span>
-                          <span className="text-xs text-gray-400">{session.messageCount} messages</span>
-                        </div>
-                      </>
-                    )}
+      ) : sessions.length === 0 ? (
+        <div style={{ padding: '16px 12px', textAlign: 'center' }}>
+          <FolderOpen size={20} color="#9ca3af" style={{ margin: '0 auto 4px' }} />
+          <p style={{ fontSize: 11, color: '#9ca3af' }}>No chats yet</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {sessions.map((session) => (
+            <div
+              key={session.id}
+              onClick={() => onSelectSession(session.id)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 12px',
+                borderRadius: 8,
+                cursor: 'pointer',
+                background: currentSessionId === session.id ? config.lightBg : 'transparent',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={e => { if (currentSessionId !== session.id) e.currentTarget.style.background = '#f9fafb'; }}
+              onMouseLeave={e => { if (currentSessionId !== session.id) e.currentTarget.style.background = 'transparent'; }}
+            >
+              <MessageCircle size={12} color={currentSessionId === session.id ? config.color : '#9ca3af'} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {editingId === session.id ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={e => e.stopPropagation()}>
+                    <input
+                      type="text"
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      style={{ flex: 1, fontSize: 12, border: `1px solid ${config.color}`, borderRadius: 4, padding: '2px 6px', outline: 'none' }}
+                      autoFocus
+                    />
+                    <button onClick={(e) => handleRename(session.id, e)} style={{ padding: 2, background: 'none', border: 'none', cursor: 'pointer', color: '#22c55e' }}><Check size={10} /></button>
+                    <button onClick={() => setEditingId(null)} style={{ padding: 2, background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><X size={10} /></button>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => handleRename(session.id, e)}
-                      className="p-1 hover:bg-gray-200 rounded transition-colors"
-                      title="Rename"
-                    >
-                      <Edit2 size={12} className="text-gray-500" />
-                    </button>
-                    <button
-                      onClick={(e) => handleDelete(session.id, e)}
-                      className="p-1 hover:bg-red-100 rounded transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 size={12} className="text-red-500" />
-                    </button>
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 12, fontWeight: currentSessionId === session.id ? 500 : 400, color: currentSessionId === session.id ? config.color : '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {session.title || `Chat ${new Date(session.createdAt).toLocaleDateString()}`}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <Clock size={8} color="#9ca3af" />
+                      <span style={{ fontSize: 9, color: '#9ca3af' }}>{formatDate(session.updatedAt)}</span>
+                      {session.messageCount > 0 && (
+                        <>
+                          <span style={{ fontSize: 9, color: '#d1d5db' }}>•</span>
+                          <span style={{ fontSize: 9, color: '#9ca3af' }}>{session.messageCount} msgs</span>
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              <div style={{ display: 'flex', gap: 2, opacity: 0, transition: 'opacity 0.2s' }} className="chat-actions">
+                <button onClick={(e) => handleRename(session.id, e)} style={{ padding: 2, background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}><Edit2 size={10} /></button>
+                <button onClick={(e) => handleDelete(session.id, e)} style={{ padding: 2, background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}><Trash2 size={10} /></button>
+              </div>
+              <style>{`
+                .chat-actions { opacity: 0; transition: opacity 0.2s; }
+                div:hover .chat-actions { opacity: 1; }
+              `}</style>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
