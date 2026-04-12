@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Heart, MessageCircle, Share2, User, MapPin, Calendar, 
-  ThumbsUp, Trash2, Edit2, MoreVertical, X, Check, AlertTriangle
+   MessageCircle, Share2, MapPin, 
+  ThumbsUp, Trash2, Edit2, MoreVertical, X, AlertTriangle
 } from 'lucide-react';
 import { useUserContext } from '../../context/UserContext';
-import { db, deleteDoc, doc, updateDoc } from '../../components/services/firebase/config';
+import { db, doc, updateDoc } from '../../components/services/firebase/config';
 
 const StoryCard = ({ story, onHelpful, onDelete, onEdit }) => {
   const navigate = useNavigate();
