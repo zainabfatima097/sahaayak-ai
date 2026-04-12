@@ -1,6 +1,6 @@
-import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Home, Sprout, Heart, GraduationCap, Landmark, User } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 
 const BottomNav = () => {
   const navItems = [
@@ -9,6 +9,7 @@ const BottomNav = () => {
     { path: '/healthcare', icon: Heart, label: 'Health' },
     { path: '/education', icon: GraduationCap, label: 'Education' },
     { path: '/schemes', icon: Landmark, label: 'Schemes' },
+    { path: '/stories', icon: MessageCircle, label: 'Stories' },
     { path: '/profile', icon: User, label: 'Profile' },
   ];
 
