@@ -109,12 +109,12 @@ jspm_packages/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variable files
+# Environment variables
 .env
-.env.development
-.env.production
 .env.local
 .env.*.local
+.env.production
+.env.development
 
 # parcel-bundler cache
 .cache
