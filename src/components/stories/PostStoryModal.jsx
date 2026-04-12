@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { X, Upload, Image, Video, Mic, Loader2, Sparkles } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { X, Upload, Loader2, Sparkles } from 'lucide-react';
 import { storage, ref, uploadBytes, getDownloadURL } from '../services/firebase/config';
 import { useUserContext } from '../../context/UserContext';
 
