@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Upload, File, Image, FileText, X, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { Upload, File, FileText, X, Loader2 } from 'lucide-react';
 
 const FileUpload = ({ onFileAnalyze, isProcessing }) => {
   const [selectedFile, setSelectedFile] = useState(null);
