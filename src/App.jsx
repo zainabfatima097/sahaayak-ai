@@ -9,6 +9,8 @@ import AgriculturePage from './components/pages/AgriculturePage';
 import HealthcarePage from './components/pages/HealthcarePage';
 import EducationPage from './components/pages/EducationPage';
 import SchemesPage from './components/pages/SchemesPage';
+import StoriesPage from './components/pages/StoriesPage';  // NEW
+import StoryDetailPage from './components/pages/StoryDetailPage';
 import ProfilePage from './components/pages/ProfilePage';
 import OfflinePage from './components/pages/OfflinePage';
 import { db, collection, addDoc } from './components/services/firebase/config';
@@ -50,6 +52,8 @@ function App() {
             <Route path="/healthcare" element={<HealthcarePage />} />
             <Route path="/education" element={<EducationPage />} />
             <Route path="/schemes" element={<SchemesPage />} />
+            <Route path="/stories" element={<StoriesPage />} />  {/* NEW */}
+            <Route path="/story/:storyId" element={<StoryDetailPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/offline" element={<OfflinePage />} />
             <Route path="*" element={<Navigate to="/" />} />
