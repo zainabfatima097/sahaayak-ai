@@ -357,3 +357,161 @@ export {
   getDownloadURL,
   deleteObject
 };
+
+// Add these to your existing config.js exports
+
+// Collections
+export const STORIES_COLLECTION = 'success_stories';
+export const STORY_HELPFUL_COLLECTION = 'story_helpful';
+export const STORY_COMMENTS_COLLECTION = 'story_comments';
+
+// Story Functions
+export const createStory = async (storyData) => {
+  try {
+    const storyRef = collection(db, STORIES_COLLECTION);
+    const newStory = {
+      ...storyData,
+      helpfulCount: 0,
+      commentCount: 0,
+      status: 'pending', // pending, approved, rejected
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    const docRef = await addDoc(storyRef, newStory);
+    return { success: true, storyId: docRef.id };
+  } catch (error) {
+    console.error('Error creating story:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getStories = async (filters = {}) => {
+  try {
+    let q = query(
+      collection(db, STORIES_COLLECTION),
+      where('status', '==', 'approved'),
+      orderBy('createdAt', 'desc')
+    );
+    
+    if (filters.domain && filters.domain !== 'all') {
+      q = query(q, where('domain', '==', filters.domain));
+    }
+    
+    if (filters.language && filters.language !== 'all') {
+      q = query(q, where('language', '==', filters.language));
+    }
+    
+    const querySnapshot = await getDocs(q);
+    const stories = [];
+    querySnapshot.forEach(doc => {
+      stories.push({ id: doc.id, ...doc.data() });
+    });
+    return { success: true, stories };
+  } catch (error) {
+    console.error('Error getting stories:', error);
+    return { success: false, error: error.message, stories: [] };
+  }
+};
+
+export const getStoryById = async (storyId) => {
+  try {
+    const storyRef = doc(db, STORIES_COLLECTION, storyId);
+    const storySnap = await getDoc(storyRef);
+    if (storySnap.exists()) {
+      return { success: true, story: { id: storySnap.id, ...storySnap.data() } };
+    }
+    return { success: false, error: 'Story not found' };
+  } catch (error) {
+    console.error('Error getting story:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const toggleHelpful = async (storyId, userId) => {
+  try {
+    const helpfulRef = collection(db, STORY_HELPFUL_COLLECTION);
+    const q = query(helpfulRef, where('storyId', '==', storyId), where('userId', '==', userId));
+    const existing = await getDocs(q);
+    
+    const storyRef = doc(db, STORIES_COLLECTION, storyId);
+    
+    if (!existing.empty) {
+      // Remove helpful
+      await deleteDoc(existing.docs[0].ref);
+      await updateDoc(storyRef, {
+        helpfulCount: increment(-1)
+      });
+      return { success: true, isHelpful: false };
+    } else {
+      // Add helpful
+      await addDoc(helpfulRef, {
+        storyId,
+        userId,
+        createdAt: new Date()
+      });
+      await updateDoc(storyRef, {
+        helpfulCount: increment(1)
+      });
+      return { success: true, isHelpful: true };
+    }
+  } catch (error) {
+    console.error('Error toggling helpful:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const checkUserHelpful = async (storyId, userId) => {
+  try {
+    const helpfulRef = collection(db, STORY_HELPFUL_COLLECTION);
+    const q = query(helpfulRef, where('storyId', '==', storyId), where('userId', '==', userId));
+    const snapshot = await getDocs(q);
+    return { success: true, isHelpful: !snapshot.empty };
+  } catch (error) {
+    console.error('Error checking helpful:', error);
+    return { success: false, isHelpful: false };
+  }
+};
+
+export const addStoryComment = async (storyId, userId, userName, comment, language) => {
+  try {
+    const commentRef = collection(db, STORY_COMMENTS_COLLECTION);
+    await addDoc(commentRef, {
+      storyId,
+      userId,
+      userName,
+      comment,
+      language,
+      createdAt: new Date()
+    });
+    
+    // Update comment count
+    const storyRef = doc(db, STORIES_COLLECTION, storyId);
+    await updateDoc(storyRef, {
+      commentCount: increment(1)
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getStoryComments = async (storyId) => {
+  try {
+    const q = query(
+      collection(db, STORY_COMMENTS_COLLECTION),
+      where('storyId', '==', storyId),
+      orderBy('createdAt', 'asc')
+    );
+    const querySnapshot = await getDocs(q);
+    const comments = [];
+    querySnapshot.forEach(doc => {
+      comments.push({ id: doc.id, ...doc.data() });
+    });
+    return { success: true, comments };
+  } catch (error) {
+    console.error('Error getting comments:', error);
+    return { success: false, error: error.message, comments: [] };
+  }
+};
