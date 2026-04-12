@@ -5,7 +5,7 @@ import { useUserContext } from '../../context/UserContext';
 import {
   db, collection, query, where, getDocs, addDoc, updateDoc, doc, orderBy
 } from '../../components/services/firebase/config';
-import { Send, Copy, Volume2, ThumbsUp, ThumbsDown, Bot, User, Loader2, Globe, Mic, Sparkles } from 'lucide-react';
+import { Send, Copy, Volume2, ThumbsUp, ThumbsDown, Bot, User, Loader2, Globe, Mic, Sparkles, Paperclip, Image, File, X } from 'lucide-react';
 
 /* ── Injected styles (scoped to chat) ──────────────────────────────── */
 const ChatStyles = () => (
@@ -63,6 +63,40 @@ const ChatStyles = () => (
     .ci-scroll::-webkit-scrollbar { width:5px; }
     .ci-scroll::-webkit-scrollbar-track { background:transparent; }
     .ci-scroll::-webkit-scrollbar-thumb { background:#bbf7d0; border-radius:8px; }
+
+    /* file preview styles */
+    .file-input-hidden { display: none; }
+    .file-preview { 
+      background: #f0fdf4; 
+      border-radius: 12px; 
+      padding: 8px 12px; 
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid #bbf7d0;
+      animation: slideIn 0.2s ease;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .file-preview-remove {
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 50%;
+      transition: background 0.2s;
+    }
+    .file-preview-remove:hover {
+      background: #fee2e2;
+    }
+    .attach-btn {
+      transition: all 0.2s ease;
+    }
+    .attach-btn:hover {
+      transform: scale(1.05);
+      background: #f0fdf4 !important;
+    }
   `}</style>
 );
 
@@ -76,8 +110,13 @@ const ChatInterface = ({ domain = 'general', sessionId: propSessionId, onSession
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [liked, setLiked] = useState({});
   const [disliked, setDisliked] = useState({});
+  // File upload states
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isAnalyzingFile, setIsAnalyzingFile] = useState(false);
+  const [filePreview, setFilePreview] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const { userContext, updateUserContext } = useUserContext();
 
   const languages = [
@@ -174,6 +213,96 @@ const ChatInterface = ({ domain = 'general', sessionId: propSessionId, onSession
     } finally { setIsLoading(false); setTimeout(()=>setIsTyping(false),500); }
   };
 
+  // File upload handlers
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('File too large! Max 5MB');
+      return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'text/plain'];
+    if (!allowedTypes.includes(file.type)) {
+      showToast('Only images, PDFs, and text files are supported');
+      return;
+    }
+
+    setSelectedFile(file);
+    
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => setFilePreview(e.target.result);
+      reader.readAsDataURL(file);
+    } else {
+      setFilePreview(null);
+    }
+  };
+
+  const clearSelectedFile = () => {
+    setSelectedFile(null);
+    setFilePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleFileAnalysis = async () => {
+    if (!selectedFile) return;
+    
+    setIsAnalyzingFile(true);
+    setIsLoading(true);
+    setIsTyping(true);
+    
+    try {
+      let sid = currentSessionId;
+      if (!sid && userContext.isAuthenticated) {
+        sid = await createNewSession();
+        if (!sid) return;
+      }
+      
+      const queryText = inputText.trim() || "Analyze this file";
+      const userMsg = { 
+        id: Date.now(), 
+        type: 'user', 
+        text: `📎 ${selectedFile.name}\n\n${queryText}`, 
+        timestamp: new Date() 
+      };
+      setMessages(p => [...p, userMsg]);
+      setInputText('');
+      
+      if (sid && userContext.isAuthenticated && !isOffline) {
+        await saveMessage(sid, userMsg);
+      }
+      
+      const response = await geminiClient.analyzeFile(selectedFile, queryText, userContext, domain);
+      
+      const aiMsg = { 
+        id: Date.now() + 1, 
+        type: 'ai', 
+        text: response.text, 
+        actionable: response.actionable, 
+        timestamp: new Date() 
+      };
+      setMessages(p => [...p, aiMsg]);
+      
+      if (sid && userContext.isAuthenticated) {
+        await saveMessage(sid, aiMsg);
+      }
+      
+      clearSelectedFile();
+      
+    } catch (error) {
+      console.error('File analysis failed:', error);
+      showToast('File analysis failed. Please try again.');
+    } finally {
+      setIsAnalyzingFile(false);
+      setIsLoading(false);
+      setTimeout(() => setIsTyping(false), 500);
+    }
+  };
+
   const langCode = (lang) => ({ Hindi:'hi-IN', Telugu:'te-IN', Marathi:'mr-IN', Bengali:'bn-IN', Tamil:'ta-IN' }[lang] || 'en-IN');
 
   const handleVoiceResult = (text) => { setInputText(text); handleSendMessage(text); };
@@ -186,6 +315,7 @@ const ChatInterface = ({ domain = 'general', sessionId: propSessionId, onSession
   };
 
   const copyToClipboard = (text) => { navigator.clipboard.writeText(text); showToast('✓ Copied!'); };
+  
   const speakMessage = (text) => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -194,6 +324,7 @@ const ChatInterface = ({ domain = 'general', sessionId: propSessionId, onSession
       window.speechSynthesis.speak(u);
     }
   };
+  
   const changeLanguage = (code, name) => { updateUserContext({ language: name }); setShowLanguageMenu(false); showToast(`Language → ${name}`); };
 
   const suggestedQuestions = {
@@ -203,6 +334,7 @@ const ChatInterface = ({ domain = 'general', sessionId: propSessionId, onSession
     schemes:     ['PM-KISAN योजना','राशन कार्ड','आवास योजना','आयुष्मान भारत'],
     general:     ['सरकारी योजनाएं','कृषि सलाह','स्वास्थ्य सुझाव','शिक्षा जानकारी'],
   };
+  
   const domainMeta = {
     agriculture: { icon:'🌾', title:'किसान साथी', subtitle:'Farmer Assistant',  color:'#15803d', bg:'#dcfce7', img:'https://images.pexels.com/photos/2132180/pexels-photo-2132180.jpeg?auto=compress&w=600&h=300&fit=crop' },
     healthcare:  { icon:'🏥', title:'स्वास्थ्य साथी', subtitle:'Health Assistant', color:'#dc2626', bg:'#fee2e2', img:'https://images.pexels.com/photos/5214958/pexels-photo-5214958.jpeg?auto=compress&w=600&h=300&fit=crop' },
@@ -210,6 +342,7 @@ const ChatInterface = ({ domain = 'general', sessionId: propSessionId, onSession
     schemes:     { icon:'📋', title:'योजना साथी', subtitle:'Schemes Assistant',  color:'#b45309', bg:'#fef3c7', img:'https://images.pexels.com/photos/8942991/pexels-photo-8942991.jpeg?auto=compress&w=600&h=300&fit=crop' },
     general:     { icon:'🤖', title:'सहायक AI',  subtitle:'General Assistant',   color:'#6d28d9', bg:'#ede9fe', img:'https://images.pexels.com/photos/7991579/pexels-photo-7991579.jpeg?auto=compress&w=600&h=300&fit=crop' },
   };
+  
   const meta = domainMeta[domain] || domainMeta.general;
   const questions = suggestedQuestions[domain] || suggestedQuestions.general;
 
@@ -217,14 +350,13 @@ const ChatInterface = ({ domain = 'general', sessionId: propSessionId, onSession
     <div className="ci-wrap" style={{ display:'flex', flexDirection:'column', height:'100%', background:'linear-gradient(160deg,#f0fdf4 0%,#fff 60%)', fontFamily:"'Noto Sans','Noto Sans Devanagari',sans-serif" }}>
       <ChatStyles />
 
-      {/* ── Messages ── */}
+      {/* Messages Area */}
       <div className="ci-scroll" style={{ flex:1, overflowY:'auto', padding:'24px 16px 8px' }}>
         <div style={{ maxWidth:760, margin:'0 auto', display:'flex', flexDirection:'column', gap:16 }}>
 
           {/* Empty state */}
           {messages.length === 0 && !isLoading && (
             <div style={{ textAlign:'center', padding:'40px 16px 24px' }}>
-              {/* Hero banner */}
               <div style={{ borderRadius:20, overflow:'hidden', marginBottom:24, position:'relative', height:160, boxShadow:'0 8px 32px rgba(0,0,0,0.12)' }}>
                 <img src={meta.img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                 <div style={{ position:'absolute', inset:0, background:'linear-gradient(to right, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 100%)' }} />
@@ -239,7 +371,6 @@ const ChatInterface = ({ domain = 'general', sessionId: propSessionId, onSession
                 मुझसे कुछ भी पूछें · Ask me anything in <strong style={{ color: meta.color }}>{userContext.language || 'Hindi'}</strong> or English
               </p>
 
-              {/* Suggestion pills */}
               <div style={{ display:'flex', flexWrap:'wrap', gap:10, justifyContent:'center', maxWidth:560, margin:'0 auto' }}>
                 {questions.map((q, i) => (
                   <button
@@ -269,13 +400,10 @@ const ChatInterface = ({ domain = 'general', sessionId: propSessionId, onSession
                 </div>
               ) : (
                 <div style={{ display:'flex', alignItems:'flex-start', gap:10, maxWidth:'85%' }}>
-                  {/* Bot avatar */}
                   <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#22c55e,#10b981)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 12px rgba(34,197,94,0.3)' }}>
                     <Bot size={18} color="#fff" />
                   </div>
-                  {/* Bubble */}
                   <div style={{ background:'#fff', borderRadius:'4px 20px 20px 20px', boxShadow:'0 4px 20px rgba(0,0,0,0.07)', border:'1.5px solid #f0fdf4', overflow:'hidden' }}>
-                    {/* Bubble header */}
                     <div style={{ padding:'10px 16px 8px', borderBottom:'1px solid #f0fdf4', display:'flex', alignItems:'center', gap:8 }}>
                       <span style={{ fontFamily:"'Baloo 2',sans-serif", fontWeight:700, fontSize:13, color:'#15803d' }}>Sahaayak AI</span>
                       <span style={{ width:5, height:5, borderRadius:'50%', background:'#22c55e', display:'inline-block' }} className="ci-pulse" />
@@ -283,11 +411,9 @@ const ChatInterface = ({ domain = 'general', sessionId: propSessionId, onSession
                         {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : 'Now'}
                       </span>
                     </div>
-                    {/* Text */}
                     <div style={{ padding:'12px 16px', fontSize:15, color: msg.error ? '#dc2626' : '#1f2937', lineHeight:1.75, whiteSpace:'pre-wrap', fontFamily:"'Noto Sans','Noto Sans Devanagari',sans-serif" }}>
                       {msg.text}
                     </div>
-                    {/* Action bar */}
                     <div style={{ padding:'8px 12px', borderTop:'1px solid #f0fdf4', display:'flex', gap:4, alignItems:'center' }}>
                       {[
                         { icon: Copy,    label:'Copy',    action: ()=>copyToClipboard(msg.text) },
@@ -334,13 +460,59 @@ const ChatInterface = ({ domain = 'general', sessionId: propSessionId, onSession
         </div>
       </div>
 
-      {/* ── Input area ── */}
+      {/* Input Area with File Upload */}
       <div style={{ borderTop:'1.5px solid #dcfce7', background:'rgba(255,255,255,0.92)', backdropFilter:'blur(12px)', padding:'14px 16px' }}>
         <div style={{ maxWidth:760, margin:'0 auto' }}>
           {/* Offline banner */}
           {isOffline && (
             <div style={{ background:'#fef3c7', border:'1px solid #fde68a', borderRadius:12, padding:'8px 14px', marginBottom:10, display:'flex', alignItems:'center', gap:8, fontSize:13, color:'#92400e' }}>
               <span>⚠️</span> आप ऑफलाइन हैं · You are offline
+            </div>
+          )}
+
+          {/* File Preview */}
+          {selectedFile && (
+            <div className="file-preview">
+              {filePreview ? (
+                <img src={filePreview} alt="Preview" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover' }} />
+              ) : (
+                <File size={20} color="#15803d" />
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 12, fontWeight: 500, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {selectedFile.name}
+                </p>
+                <p style={{ fontSize: 10, color: '#9ca3af' }}>
+                  {(selectedFile.size / 1024).toFixed(1)} KB
+                </p>
+              </div>
+              <button
+                onClick={clearSelectedFile}
+                className="file-preview-remove"
+                style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                <X size={14} color="#9ca3af" />
+              </button>
+              <button
+                onClick={handleFileAnalysis}
+                disabled={isAnalyzingFile}
+                style={{
+                  padding: '6px 12px',
+                  background: 'linear-gradient(135deg,#22c55e,#10b981)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  cursor: isAnalyzingFile ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  opacity: isAnalyzingFile ? 0.6 : 1
+                }}
+              >
+                {isAnalyzingFile ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                Analyze
+              </button>
             </div>
           )}
 
@@ -361,12 +533,44 @@ const ChatInterface = ({ domain = 'general', sessionId: propSessionId, onSession
               <button
                 className="ci-send"
                 onClick={() => handleSendMessage(inputText)}
-                disabled={!inputText.trim() || isLoading}
+                disabled={!inputText.trim() || isLoading || isAnalyzingFile}
                 style={{ position:'absolute', right:8, bottom:8, width:36, height:36, borderRadius:10, background: inputText.trim() ? 'linear-gradient(135deg,#22c55e,#10b981)' : '#e5e7eb', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow: inputText.trim() ? '0 4px 12px rgba(34,197,94,0.35)' : 'none', transition:'background 0.2s, box-shadow 0.2s' }}
               >
                 {isLoading ? <Loader2 size={16} color="#fff" style={{ animation:'spin 1s linear infinite' }} /> : <Send size={16} color={inputText.trim() ? '#fff' : '#9ca3af'} />}
               </button>
             </div>
+
+            {/* File Upload Button */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,.pdf,.txt"
+              onChange={handleFileSelect}
+              className="file-input-hidden"
+              style={{ display: 'none' }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="attach-btn"
+              disabled={isLoading || isAnalyzingFile}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                background: '#fff',
+                border: '1.5px solid #dcfce7',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#15803d',
+                transition: 'all 0.2s',
+                opacity: isLoading || isAnalyzingFile ? 0.5 : 1
+              }}
+              title="Attach file (Image, PDF, or Text)"
+            >
+              <Paperclip size={18} />
+            </button>
 
             {/* Voice button */}
             <VoiceButton
@@ -380,27 +584,30 @@ const ChatInterface = ({ domain = 'general', sessionId: propSessionId, onSession
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:10, gap:8 }}>
             <div style={{ display:'flex', alignItems:'center', gap:7 }}>
               <span style={{ width:7, height:7, borderRadius:'50%', background:'#22c55e', display:'inline-block' }} className="ci-pulse" />
-              <span style={{ fontSize:12, color:'#9ca3af' }}>🔒 Private & secure · हिन्दी, English सभी भाषाएं</span>
+              <span style={{ fontSize:12, color:'#9ca3af' }}>Private & secure · हिन्दी, English, తెలుగు, मराठी, বাংলা, தமிழ்</span>
             </div>
 
-            {/* Language switcher */}
-            <div style={{ position:'relative' }}>
-              <button
-                onClick={() => setShowLanguageMenu(v => !v)}
-                style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:8, border:'1px solid #dcfce7', background:'#f0fdf4', color:'#15803d', fontSize:12, cursor:'pointer', fontFamily:"'Baloo 2',sans-serif", fontWeight:600, transition:'background 0.2s' }}
-              >
-                <Globe size={13} /> {userContext.language || 'Hindi'}
-              </button>
-              {showLanguageMenu && (
-                <div className="ci-dropdown" style={{ position:'absolute', bottom:'calc(100% + 6px)', right:0, background:'#fff', borderRadius:14, boxShadow:'0 8px 32px rgba(0,0,0,0.14)', border:'1.5px solid #dcfce7', overflow:'hidden', zIndex:100, minWidth:140 }}>
-                  {languages.map(lang => (
-                    <button key={lang.code} onClick={() => changeLanguage(lang.code, lang.nativeName)}
-                      style={{ width:'100%', padding:'9px 14px', textAlign:'left', border:'none', background: userContext.language===lang.nativeName ? '#f0fdf4' : '#fff', color: userContext.language===lang.nativeName ? '#15803d' : '#374151', fontSize:14, cursor:'pointer', fontFamily:"'Noto Sans Devanagari','Noto Sans',sans-serif", fontWeight: userContext.language===lang.nativeName ? 600 : 400, transition:'background 0.15s', display:'flex', alignItems:'center', gap:8 }}>
-                      {userContext.language===lang.nativeName && <span style={{ color:'#22c55e' }}>✓</span>} {lang.nativeName}
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 10, color: '#9ca3af' }}>Attach files</span>
+              {/* Language switcher */}
+              <div style={{ position:'relative' }}>
+                <button
+                  onClick={() => setShowLanguageMenu(v => !v)}
+                  style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', borderRadius:8, border:'1px solid #dcfce7', background:'#f0fdf4', color:'#15803d', fontSize:12, cursor:'pointer', fontFamily:"'Baloo 2',sans-serif", fontWeight:600, transition:'background 0.2s' }}
+                >
+                  <Globe size={13} /> {userContext.language || 'Hindi'}
+                </button>
+                {showLanguageMenu && (
+                  <div className="ci-dropdown" style={{ position:'absolute', bottom:'calc(100% + 6px)', right:0, background:'#fff', borderRadius:14, boxShadow:'0 8px 32px rgba(0,0,0,0.14)', border:'1.5px solid #dcfce7', overflow:'hidden', zIndex:100, minWidth:140 }}>
+                    {languages.map(lang => (
+                      <button key={lang.code} onClick={() => changeLanguage(lang.code, lang.nativeName)}
+                        style={{ width:'100%', padding:'9px 14px', textAlign:'left', border:'none', background: userContext.language===lang.nativeName ? '#f0fdf4' : '#fff', color: userContext.language===lang.nativeName ? '#15803d' : '#374151', fontSize:14, cursor:'pointer', fontFamily:"'Noto Sans Devanagari','Noto Sans',sans-serif", fontWeight: userContext.language===lang.nativeName ? 600 : 400, transition:'background 0.15s', display:'flex', alignItems:'center', gap:8 }}>
+                        {userContext.language===lang.nativeName && <span style={{ color:'#22c55e' }}>✓</span>} {lang.nativeName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
