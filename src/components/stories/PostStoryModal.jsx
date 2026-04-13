@@ -1,10 +1,12 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { X, Upload, Loader2, Sparkles } from 'lucide-react';
-import { storage, ref, uploadBytes, getDownloadURL } from '../services/firebase/config';
 import { useUserContext } from '../../context/UserContext';
 
+// ImgBB API Key - Get yours from https://imgbb.com/
+const IMGBB_API_KEY = 'cc72605864dc3c08aad6c31d464d5b11'; // Replace with your actual API key
+
 const PostStoryModal = ({ isOpen, onClose, onSubmit, domain }) => {
-  const { userContext } = useUserContext(); // ADD THIS
+  const { userContext } = useUserContext();
   const [formData, setFormData] = useState({
     domain: domain || 'agriculture',
     title: '',
@@ -27,6 +29,24 @@ const PostStoryModal = ({ isOpen, onClose, onSubmit, domain }) => {
 
   const languages = ['Hindi', 'English', 'Marathi', 'Telugu', 'Tamil', 'Bengali'];
 
+  const uploadToImgBB = async (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+      method: 'POST',
+      body: formData
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      return data.data.url;
+    } else {
+      throw new Error(data.error?.message || 'Upload failed');
+    }
+  };
+
   const handleMediaSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -36,46 +56,32 @@ const PostStoryModal = ({ isOpen, onClose, onSubmit, domain }) => {
       return;
     }
 
-    const mediaType = file.type.startsWith('image/') ? 'image' : 
-                      file.type.startsWith('video/') ? 'video' : 'none';
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file');
+      return;
+    }
     
-    setFormData(prev => ({ ...prev, mediaType, mediaFile: file }));
+    setFormData(prev => ({ ...prev, mediaType: 'image', mediaFile: file }));
     
-    // Create preview
     const reader = new FileReader();
     reader.onload = (e) => setMediaPreview(e.target.result);
     reader.readAsDataURL(file);
   };
 
   const uploadMedia = async () => {
-  if (!formData.mediaFile) return null;
-  
-  try {
-    const file = formData.mediaFile;
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const storageRef = ref(storage, `stories/${fileName}`);
+    if (!formData.mediaFile) return null;
     
-    // Add metadata
-    const metadata = {
-      contentType: file.type,
-      customMetadata: {
-        uploadedBy: userContext.uid,
-        uploadedAt: new Date().toISOString()
-      }
-    };
-    
-    const uploadTask = await uploadBytes(storageRef, file, metadata);
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
-  } catch (error) {
-    console.error('Upload error:', error);
-    if (error.code === 'storage/retry-limit-exceeded') {
-      throw new Error('Upload failed due to network issues. Please try again with a smaller file.');
+    try {
+      setUploadProgress(50);
+      const imageUrl = await uploadToImgBB(formData.mediaFile);
+      setUploadProgress(100);
+      return imageUrl;
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Failed to upload image. Please try again or post without image.');
+      return null;
     }
-    throw error;
-  }
-};
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -98,9 +104,9 @@ const PostStoryModal = ({ isOpen, onClose, onSubmit, domain }) => {
         title: formData.title,
         content: formData.content,
         language: formData.language,
-        mediaType: formData.mediaType,
+        mediaType: mediaUrl ? 'image' : 'none',
         mediaUrl: mediaUrl,
-        mediaThumbnail: mediaPreview && formData.mediaType === 'image' ? mediaPreview : null
+        mediaThumbnail: mediaPreview || null
       };
 
       await onSubmit(storyData);
@@ -133,21 +139,16 @@ const PostStoryModal = ({ isOpen, onClose, onSubmit, domain }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn">
       <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto m-4 shadow-2xl">
-        {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles size={20} className="text-green-600" />
             <h2 className="text-xl font-bold text-gray-800">Share Your Success Story</h2>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-          >
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
             <X size={20} />
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Domain Selection */}
           <div>
@@ -219,36 +220,30 @@ const PostStoryModal = ({ isOpen, onClose, onSubmit, domain }) => {
             />
           </div>
 
-          {/* Media Upload */}
+          {/* Image Upload with ImgBB */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Add Photo or Video (Optional)
+              Add Photo (Optional) - Free image hosting
             </label>
             <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-green-300 transition-colors">
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*,video/*"
+                accept="image/*"
                 onChange={handleMediaSelect}
                 className="hidden"
                 id="media-upload"
               />
               {!mediaPreview ? (
-                <label
-                  htmlFor="media-upload"
-                  className="cursor-pointer block"
-                >
+                <label htmlFor="media-upload" className="cursor-pointer block">
                   <Upload size={32} className="mx-auto text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-500">Click to upload image or video</p>
-                  <p className="text-xs text-gray-400 mt-1">Max 10MB</p>
+                  <p className="text-sm text-gray-500">Click to upload image</p>
+                  <p className="text-xs text-gray-400 mt-1">Max 10MB · JPG, PNG, GIF</p>
+                  <p className="text-xs text-green-600 mt-2">✓ Free hosting via ImgBB</p>
                 </label>
               ) : (
                 <div className="relative">
-                  {formData.mediaType === 'image' ? (
-                    <img src={mediaPreview} alt="Preview" className="max-h-48 mx-auto rounded-lg" />
-                  ) : (
-                    <video src={mediaPreview} className="max-h-48 mx-auto rounded-lg" controls />
-                  )}
+                  <img src={mediaPreview} alt="Preview" className="max-h-48 mx-auto rounded-lg" />
                   <button
                     type="button"
                     onClick={() => {
@@ -264,6 +259,16 @@ const PostStoryModal = ({ isOpen, onClose, onSubmit, domain }) => {
               )}
             </div>
           </div>
+
+          {/* Upload Progress */}
+          {uploadProgress > 0 && uploadProgress < 100 && (
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          )}
 
           {/* Submit Button */}
           <button
@@ -283,15 +288,6 @@ const PostStoryModal = ({ isOpen, onClose, onSubmit, domain }) => {
               </>
             )}
           </button>
-
-          {uploadProgress > 0 && uploadProgress < 100 && (
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
-          )}
         </form>
       </div>
     </div>
