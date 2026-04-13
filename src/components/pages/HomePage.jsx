@@ -246,10 +246,14 @@ const HomePage = () => {
   const navigate = useNavigate();
 
   const heroImages = [
-    'https://images.pexels.com/photos/1459936/pexels-photo-1459936.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop',
-    'https://images.pexels.com/photos/2143693/pexels-photo-2143693.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop',
-    'https://images.pexels.com/photos/3601421/pexels-photo-3601421.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop',
-    'https://images.pexels.com/photos/3791466/pexels-photo-3791466.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop',
+    'https://www.actionaidindia.org/wp-content/uploads/2021/01/The-story-of-114-Odisha-villages-Inside-Image.jpg',
+    'https://media-cdn.tripadvisor.com/media/photo-s/17/7d/66/f2/children-playing-in-the.jpg',
+    'https://scoonews.com/wp-content/uploads/2022/07/kids-school-60cc773e912d316243546261624354626.jpg',
+    'https://i.pinimg.com/736x/7d/3d/db/7d3ddb1f8b6a15564a890b68de8fd82d.jpg',
+    'https://images.indianexpress.com/2019/07/tribal-student.jpg?w=1200',
+    'https://akm-img-a-in.tosshub.com/indiatoday/images/story/202004/children-876543_1280__1__1.jpeg?size=690:388',
+    'https://media.gettyimages.com/id/1500323507/photo/a-doctor-examining-a-young-pregnant-woman-as-part-of-a-medical-health-care-camp-in-a-village.jpg?s=612x612&w=gi&k=20&c=7gmaFqcK-dVWLoLuvKeGNnzE8Hdk6yJ5I1jVR1tyKR4=',
+    'https://i.ytimg.com/vi/2TvLVI82qvg/hq720.jpg?sqi=2',
   ];
 
   const [imgIdx, setImgIdx] = useState(0);
@@ -280,7 +284,7 @@ const HomePage = () => {
       bg: 'linear-gradient(135deg,#fff1f2,#ffe4e6)',
       accent: '#e11d48',
       light: '#fecdd3',
-      img: 'https://images.pexels.com/photos/5214958/pexels-photo-5214958.jpeg?auto=compress&w=500&h=280&fit=crop',
+      img: 'https://media.gettyimages.com/id/1500323507/photo/a-doctor-examining-a-young-pregnant-woman-as-part-of-a-medical-health-care-camp-in-a-village.jpg?s=612x612&w=gi&k=20&c=7gmaFqcK-dVWLoLuvKeGNnzE8Hdk6yJ5I1jVR1tyKR4=',
       stats: '24/7 emergency support',
       path: '/healthcare',
     },
@@ -293,7 +297,7 @@ const HomePage = () => {
       bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)',
       accent: '#16a34a',
       light: '#bbf7d0',
-      img: 'https://images.pexels.com/photos/2132180/pexels-photo-2132180.jpeg?auto=compress&w=500&h=280&fit=crop',
+      img: 'https://thumbs.dreamstime.com/b/indian-village-life-18326271.jpg',
       stats: '50K+ farmers helped',
       path: '/agriculture',
     },
@@ -306,7 +310,7 @@ const HomePage = () => {
       bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)',
       accent: '#2563eb',
       light: '#bfdbfe',
-      img: 'https://images.pexels.com/photos/8471844/pexels-photo-8471844.jpeg?auto=compress&w=500&h=280&fit=crop',
+      img: 'https://akm-img-a-in.tosshub.com/indiatoday/images/story/202004/children-876543_1280__1__1.jpeg?size=690:388',
       stats: '100+ free courses',
       path: '/education',
     },
@@ -319,7 +323,7 @@ const HomePage = () => {
       bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)',
       accent: '#d97706',
       light: '#fde68a',
-      img: 'https://images.pexels.com/photos/8942991/pexels-photo-8942991.jpeg?auto=compress&w=500&h=280&fit=crop',
+      img: 'https://img-cdn.publive.online/fit-in/640x430/filters:format(webp)/english-betterindia/media/post_attachments/uploads/2017/11/Children-eating-a-meal..jpg',
       stats: '50+ active schemes',
       path: '/schemes',
     },
