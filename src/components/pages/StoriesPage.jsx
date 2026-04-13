@@ -76,12 +76,6 @@ const StoriesGlobalStyles = () => (
     /* filter pill active */
     .s-filter-active { background: #16a34a !important; color: #fff !important; }
 
-    /* story card domain colors */
-    .s-domain-agriculture { border-color: #bbf7d0 !important; }
-    .s-domain-healthcare   { border-color: #fecdd3 !important; }
-    .s-domain-education    { border-color: #bfdbfe !important; }
-    .s-domain-schemes      { border-color: #fde68a !important; }
-
     /* scroll indicator */
     @keyframes sScrollDown {
       0%   { transform: translateY(0); opacity:1; }
@@ -157,19 +151,40 @@ const StoriesPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [imgIdx, setImgIdx] = useState(0);
   const [statsVisible, setStatsVisible] = useState(false);
+  const [imagesLoaded, setImagesLoaded] = useState(false);
   const statsRef = useRef(null);
 
   useScrollReveal(stories.length);
 
-  // Hero images — rural India storytelling vibe
+  // Hero images — working direct URLs from Pexels
   const heroImages = [
     'https://images.pexels.com/photos/3807571/pexels-photo-3807571.jpeg?auto=compress&cs=tinysrgb&w=1920&h=700&fit=crop',
     'https://images.pexels.com/photos/2519370/pexels-photo-2519370.jpeg?auto=compress&cs=tinysrgb&w=1920&h=700&fit=crop',
     'https://images.pexels.com/photos/5212361/pexels-photo-5212361.jpeg?auto=compress&cs=tinysrgb&w=1920&h=700&fit=crop',
+    'https://images.pexels.com/photos/4040622/pexels-photo-4040622.jpeg?auto=compress&cs=tinysrgb&w=1920&h=700&fit=crop',
+    'https://images.pexels.com/photos/3721941/pexels-photo-3721941.jpeg?auto=compress&cs=tinysrgb&w=1920&h=700&fit=crop',
   ];
 
+  // Preload images to prevent blank screen
   useEffect(() => {
-    const t = setInterval(() => setImgIdx(i => (i + 1) % heroImages.length), 5000);
+    const preloadImages = async () => {
+      const loadPromises = heroImages.map((src) => {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve(true);
+          img.onerror = () => resolve(false);
+          img.src = src;
+        });
+      });
+      await Promise.all(loadPromises);
+      setImagesLoaded(true);
+    };
+    
+    preloadImages();
+    
+    const t = setInterval(() => {
+      setImgIdx(i => (i + 1) % heroImages.length);
+    }, 5000);
     return () => clearInterval(t);
   }, []);
 
@@ -229,8 +244,27 @@ const StoriesPage = () => {
       {/* ── HERO ──────────────────────────────────────────────────── */}
       <section style={{ position: 'relative', height: 480, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         {heroImages.map((src, i) => (
-          <img key={i} src={src} alt="" className={`s-hero-img s-kb ${i === imgIdx ? 'active' : ''}`} />
+          <img 
+            key={i} 
+            src={src} 
+            alt="Rural India" 
+            className={`s-hero-img s-kb ${i === imgIdx ? 'active' : ''}`}
+            style={{ opacity: imagesLoaded ? (i === imgIdx ? 1 : 0) : 0 }}
+            onError={(e) => {
+              e.target.src = 'https://images.pexels.com/photos/3807571/pexels-photo-3807571.jpeg?auto=compress&cs=tinysrgb&w=1920&h=700&fit=crop';
+            }}
+          />
         ))}
+
+        {/* Show loading placeholder while images load */}
+        {!imagesLoaded && (
+          <div style={{ position: 'absolute', inset: 0, background: '#14532d', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5 }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ width: 48, height: 48, borderRadius: '50%', border: '3px solid #86efac', borderTopColor: 'transparent', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
+              <p style={{ color: '#86efac', fontFamily: 'var(--font-display)' }}>Loading stories...</p>
+            </div>
+          </div>
+        )}
 
         {/* Layered overlays */}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(0,0,0,0.78) 0%, rgba(0,30,0,0.6) 50%, rgba(0,0,0,0.72) 100%)' }} />
@@ -490,19 +524,19 @@ const StoriesPage = () => {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {stories.map((story, i) => (
-  <div
-    key={story.id}
-    className="s-reveal s-card-lift"
-    style={{ transitionDelay: `${Math.min(i * 60, 300)}ms` }}
-  >
-    <StoryCard 
-      story={story} 
-      onHelpful={handleHelpful}
-      onDelete={deleteStory}
-      onEdit={updateStory}
-    />
-  </div>
-))}
+                <div
+                  key={story.id}
+                  className="s-reveal s-card-lift"
+                  style={{ transitionDelay: `${Math.min(i * 60, 300)}ms` }}
+                >
+                  <StoryCard 
+                    story={story} 
+                    onHelpful={handleHelpful}
+                    onDelete={deleteStory}
+                    onEdit={updateStory}
+                  />
+                </div>
+              ))}
             </div>
           )}
         </div>
