@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { UserProvider } from './context/UserContext';
 import { OfflineProvider } from './context/OfflineContext';
+import { ThemeProvider } from './context/ThemeContext';
 import HomePage from './components/pages/HomePage';
 import LoginPage from './components/pages/LoginPage';
 import ChatPage from './components/pages/ChatPage';
@@ -37,6 +38,7 @@ const TestFirebase = () => {
 
 function App() {
   return (
+    <ThemeProvider>
     <UserProvider>
       <OfflineProvider>
         <Router future={{
@@ -61,6 +63,7 @@ function App() {
         </Router>
       </OfflineProvider>
     </UserProvider>
+    </ThemeProvider>
   );
 }
 
