@@ -6,7 +6,6 @@ import {
 import { db, collection, query, where, getDocs, deleteDoc, doc, updateDoc } from '../../components/services/firebase/config';
 import { useUserContext } from '../../context/UserContext';
 
-// This component now ONLY renders the list of chats, no header
 const ChatHistory = ({ domain, onSelectSession, currentSessionId, onNewChat }) => {
   const [sessions, setSessions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,43 +59,68 @@ const ChatHistory = ({ domain, onSelectSession, currentSessionId, onNewChat }) =
     }
   };
 
-  const handleDelete = async (sessionId, e) => {
-    e.stopPropagation();
-    if (window.confirm('Delete this chat session?')) {
+  const handleDelete = async (sessionId) => {
+    if (window.confirm('Are you sure you want to delete this chat? This action cannot be undone.')) {
       try {
+        // Delete all messages in the session
         const messagesQuery = query(collection(db, 'chat_messages'), where('sessionId', '==', sessionId));
         const messagesSnapshot = await getDocs(messagesQuery);
         const deletePromises = messagesSnapshot.docs.map(doc => deleteDoc(doc.ref));
         await Promise.all(deletePromises);
+        
+        // Delete the session
         await deleteDoc(doc(db, 'chat_sessions', sessionId));
+        
+        // Remove from state
         setSessions(sessions.filter(s => s.id !== sessionId));
+        
+        // If the deleted session was currently active, create a new chat
         if (currentSessionId === sessionId && onNewChat) {
           onNewChat();
         }
+        
+        alert('Chat deleted successfully!');
       } catch (error) {
         console.error('Error deleting session:', error);
+        alert('Failed to delete session. Please try again.');
       }
     }
   };
 
-  const handleRename = async (sessionId, e) => {
-    e.stopPropagation();
-    if (editingId === sessionId) {
-      if (editingTitle.trim()) {
-        try {
-          const sessionRef = doc(db, 'chat_sessions', sessionId);
-          await updateDoc(sessionRef, { title: editingTitle, updatedAt: new Date() });
-          setSessions(sessions.map(s => s.id === sessionId ? { ...s, title: editingTitle } : s));
-        } catch (error) {
-          console.error('Error renaming session:', error);
-        }
-      }
-      setEditingId(null);
-      setEditingTitle('');
-    } else {
-      const session = sessions.find(s => s.id === sessionId);
-      setEditingId(sessionId);
-      setEditingTitle(session.title);
+  // FIXED: Rename function
+  const startRename = (sessionId, currentTitle) => {
+    setEditingId(sessionId);
+    setEditingTitle(currentTitle);
+  };
+
+  const cancelRename = () => {
+    setEditingId(null);
+    setEditingTitle('');
+  };
+
+  const saveRename = async (sessionId) => {
+    if (!editingTitle.trim()) {
+      cancelRename();
+      return;
+    }
+    
+    try {
+      const sessionRef = doc(db, 'chat_sessions', sessionId);
+      await updateDoc(sessionRef, { 
+        title: editingTitle.trim(), 
+        updatedAt: new Date() 
+      });
+      
+      // Update local state
+      setSessions(sessions.map(s => 
+        s.id === sessionId ? { ...s, title: editingTitle.trim() } : s
+      ));
+      
+      alert('Chat renamed successfully!');
+      cancelRename();
+    } catch (error) {
+      console.error('Error renaming session:', error);
+      alert('Failed to rename session. Please try again.');
     }
   };
 
@@ -118,7 +142,7 @@ const ChatHistory = ({ domain, onSelectSession, currentSessionId, onNewChat }) =
 
   return (
     <div style={{ marginTop: 4 }}>
-      {/* New Chat button inside dropdown */}
+      {/* New Chat button */}
       <button
         onClick={onNewChat}
         style={{
@@ -135,7 +159,7 @@ const ChatHistory = ({ domain, onSelectSession, currentSessionId, onNewChat }) =
           fontSize: 12,
           fontWeight: 500,
           transition: 'background 0.2s',
-          marginBottom: 4
+          marginBottom: 8
         }}
         onMouseEnter={e => e.currentTarget.style.background = config.lightBg}
         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
@@ -146,7 +170,7 @@ const ChatHistory = ({ domain, onSelectSession, currentSessionId, onNewChat }) =
 
       {isLoading ? (
         <div style={{ padding: '8px 12px' }}>
-          <div style={{ height: 32, background: '#f3f4f6', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+          <div style={{ height: 32, background: '#f3f4f6', borderRadius: 8 }} />
         </div>
       ) : sessions.length === 0 ? (
         <div style={{ padding: '16px 12px', textAlign: 'center' }}>
@@ -154,11 +178,10 @@ const ChatHistory = ({ domain, onSelectSession, currentSessionId, onNewChat }) =
           <p style={{ fontSize: 11, color: '#9ca3af' }}>No chats yet</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {sessions.map((session) => (
             <div
               key={session.id}
-              onClick={() => onSelectSession(session.id)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -167,12 +190,12 @@ const ChatHistory = ({ domain, onSelectSession, currentSessionId, onNewChat }) =
                 borderRadius: 8,
                 cursor: 'pointer',
                 background: currentSessionId === session.id ? config.lightBg : 'transparent',
-                transition: 'background 0.2s'
+                border: currentSessionId === session.id ? `1px solid ${config.color}` : '1px solid transparent',
               }}
-              onMouseEnter={e => { if (currentSessionId !== session.id) e.currentTarget.style.background = '#f9fafb'; }}
-              onMouseLeave={e => { if (currentSessionId !== session.id) e.currentTarget.style.background = 'transparent'; }}
+              onClick={() => onSelectSession(session.id)}
             >
               <MessageCircle size={12} color={currentSessionId === session.id ? config.color : '#9ca3af'} />
+              
               <div style={{ flex: 1, minWidth: 0 }}>
                 {editingId === session.id ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={e => e.stopPropagation()}>
@@ -180,15 +203,73 @@ const ChatHistory = ({ domain, onSelectSession, currentSessionId, onNewChat }) =
                       type="text"
                       value={editingTitle}
                       onChange={(e) => setEditingTitle(e.target.value)}
-                      style={{ flex: 1, fontSize: 12, border: `1px solid ${config.color}`, borderRadius: 4, padding: '2px 6px', outline: 'none' }}
+                      style={{ 
+                        flex: 1, 
+                        fontSize: 12, 
+                        border: `1px solid ${config.color}`, 
+                        borderRadius: 4, 
+                        padding: '4px 6px', 
+                        outline: 'none',
+                        backgroundColor: '#fff'
+                      }}
                       autoFocus
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          saveRename(session.id);
+                        }
+                      }}
                     />
-                    <button onClick={(e) => handleRename(session.id, e)} style={{ padding: 2, background: 'none', border: 'none', cursor: 'pointer', color: '#22c55e' }}><Check size={10} /></button>
-                    <button onClick={() => setEditingId(null)} style={{ padding: 2, background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><X size={10} /></button>
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        saveRename(session.id); 
+                      }} 
+                      style={{ 
+                        padding: 4, 
+                        background: '#22c55e', 
+                        border: 'none', 
+                        cursor: 'pointer', 
+                        color: '#fff',
+                        borderRadius: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      title="Save"
+                    >
+                      <Check size={12} />
+                    </button>
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        cancelRename(); 
+                      }} 
+                      style={{ 
+                        padding: 4, 
+                        background: '#ef4444', 
+                        border: 'none', 
+                        cursor: 'pointer', 
+                        color: '#fff',
+                        borderRadius: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      title="Cancel"
+                    >
+                      <X size={12} />
+                    </button>
                   </div>
                 ) : (
                   <>
-                    <p style={{ fontSize: 12, fontWeight: currentSessionId === session.id ? 500 : 400, color: currentSessionId === session.id ? config.color : '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <p style={{ 
+                      fontSize: 12, 
+                      fontWeight: currentSessionId === session.id ? 500 : 400, 
+                      color: currentSessionId === session.id ? config.color : '#374151', 
+                      whiteSpace: 'nowrap', 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis' 
+                    }}>
                       {session.title || `Chat ${new Date(session.createdAt).toLocaleDateString()}`}
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
@@ -204,14 +285,52 @@ const ChatHistory = ({ domain, onSelectSession, currentSessionId, onNewChat }) =
                   </>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: 2, opacity: 0, transition: 'opacity 0.2s' }} className="chat-actions">
-                <button onClick={(e) => handleRename(session.id, e)} style={{ padding: 2, background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}><Edit2 size={10} /></button>
-                <button onClick={(e) => handleDelete(session.id, e)} style={{ padding: 2, background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}><Trash2 size={10} /></button>
-              </div>
-              <style>{`
-                .chat-actions { opacity: 0; transition: opacity 0.2s; }
-                div:hover .chat-actions { opacity: 1; }
-              `}</style>
+              
+              {/* Action Buttons */}
+              {editingId !== session.id && (
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startRename(session.id, session.title);
+                    }} 
+                    style={{ 
+                      padding: 4, 
+                      background: 'none', 
+                      border: 'none', 
+                      cursor: 'pointer', 
+                      color: '#6b7280',
+                      borderRadius: 4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="Rename"
+                  >
+                    <Edit2 size={12} />
+                  </button>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(session.id);
+                    }} 
+                    style={{ 
+                      padding: 4, 
+                      background: 'none', 
+                      border: 'none', 
+                      cursor: 'pointer', 
+                      color: '#ef4444',
+                      borderRadius: 4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="Delete"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
