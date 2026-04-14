@@ -3,14 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useUserContext } from '../../context/UserContext';
 import { 
   User, Mail, Phone, MapPin, Briefcase, DollarSign, Globe,
-  Volume2, Save, Edit2, Camera, Bell, Shield, Smartphone,
-  Languages, Award, Clock, LogOut, ChevronRight,
-  CheckCircle, AlertCircle, Moon, Sun, Settings,
+  Volume2, Save, Edit2, Bell, LogOut,
+  CheckCircle,  Settings,
   MessageCircle, Star, Calendar, TrendingUp, Mic, ArrowRight
 } from 'lucide-react';
 import { getChatHistory } from '../../components/services/offline/indexedDB';
+import { useTheme } from '../../context/ThemeContext';
+import ThemeToggle from '../common/ThemeToggle';
 
-/* ── Styles (exactly matching login page) ──────────────────────────── */
+/* ── Styles (matching login page with dark mode support) ──────────── */
 const ProfileStyles = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap');
@@ -31,11 +32,11 @@ const ProfileStyles = () => (
     .pp-float { animation: pp-float 3s ease-in-out infinite; }
 
     /* input styles */
-    .pp-input { width: 100%; border: 1.5px solid #e5e7eb; border-radius: 14px; padding: 13px 14px; font-size: 15px; font-family: 'Noto Sans',sans-serif; color: #1f2937; background: #fff; transition: border-color 0.2s, box-shadow 0.2s; outline: none; }
+    .pp-input { width: 100%; border: 1.5px solid var(--border); border-radius: 14px; padding: 13px 14px; font-size: 15px; font-family: 'Noto Sans',sans-serif; color: var(--text-primary); background: var(--bg-primary); transition: border-color 0.2s, box-shadow 0.2s; outline: none; }
     .pp-input:focus { border-color: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.15); }
-    .pp-input::placeholder { color: #9ca3af; }
+    .pp-input::placeholder { color: var(--text-tertiary); }
 
-    .pp-select { width: 100%; border: 1.5px solid #e5e7eb; border-radius: 14px; padding: 13px 14px; font-size: 15px; font-family: 'Noto Sans',sans-serif; color: #1f2937; background: #fff; transition: border-color 0.2s, box-shadow 0.2s; outline: none; cursor: pointer; appearance: none; }
+    .pp-select { width: 100%; border: 1.5px solid var(--border); border-radius: 14px; padding: 13px 14px; font-size: 15px; font-family: 'Noto Sans',sans-serif; color: var(--text-primary); background: var(--bg-primary); transition: border-color 0.2s, box-shadow 0.2s; outline: none; cursor: pointer; appearance: none; }
     .pp-select:focus { border-color: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.15); }
 
     /* primary button */
@@ -48,19 +49,19 @@ const ProfileStyles = () => (
     .pp-btn-logout:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(239,68,68,0.4); }
 
     /* edit button */
-    .pp-btn-edit { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 12px; border: 1.5px solid #dcfce7; background: #fff; color: #15803d; font-size: 13px; font-family: 'Baloo 2',sans-serif; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+    .pp-btn-edit { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 12px; border: 1.5px solid #dcfce7; background: var(--bg-primary); color: #15803d; font-size: 13px; font-family: 'Baloo 2',sans-serif; font-weight: 700; cursor: pointer; transition: all 0.2s; }
     .pp-btn-edit:hover { background: #f0fdf4; transform: translateY(-1px); }
 
     /* toggle switch */
     .pp-toggle { position: relative; width: 46px; height: 26px; cursor: pointer; flex-shrink: 0; }
     .pp-toggle input { opacity: 0; width: 0; height: 0; }
-    .pp-slider { position: absolute; inset: 0; background: #e5e7eb; border-radius: 999px; transition: background 0.25s; }
+    .pp-slider { position: absolute; inset: 0; background: var(--border); border-radius: 999px; transition: background 0.25s; }
     .pp-slider::before { content: ''; position: absolute; width: 20px; height: 20px; border-radius: 50%; background: #fff; top: 3px; left: 3px; transition: transform 0.25s; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
     .pp-toggle input:checked + .pp-slider { background: linear-gradient(135deg, #22c55e, #10b981); }
     .pp-toggle input:checked + .pp-slider::before { transform: translateX(20px); }
 
     /* stat card */
-    .pp-stat-card { background: #fff; border-radius: 16px; padding: 12px; text-align: center; border: 1.5px solid #f0fdf4; transition: all 0.2s; }
+    .pp-stat-card { background: var(--card-bg); border-radius: 16px; padding: 12px; text-align: center; border: 1.5px solid var(--border); transition: all 0.2s; }
     .pp-stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
 
     @keyframes pp-spin { to { transform: rotate(360deg); } }
@@ -78,6 +79,7 @@ const ProfileStyles = () => (
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { userContext, updateUserContext } = useUserContext();
+  const { isDarkMode, toggleTheme } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -91,11 +93,15 @@ const ProfilePage = () => {
   const [stats, setStats] = useState({ totalQueries: 0, savedSchemes: 0, daysActive: 1, questionsAsked: 0 });
 
   // Hero images for right panel (rural India scenes)
-  const heroImages = [
-    'https://images.pexels.com/photos/2132180/pexels-photo-2132180.jpeg?auto=compress&cs=tinysrgb&w=900&h=600&fit=crop',
-    'https://images.pexels.com/photos/3601421/pexels-photo-3601421.jpeg?auto=compress&cs=tinysrgb&w=900&h=600&fit=crop',
-    'https://images.pexels.com/photos/8471844/pexels-photo-8471844.jpeg?auto=compress&cs=tinysrgb&w=900&h=600&fit=crop',
-    'https://images.pexels.com/photos/1459936/pexels-photo-1459936.jpeg?auto=compress&cs=tinysrgb&w=900&h=600&fit=crop',
+   const heroImages = [
+    'https://www.actionaidindia.org/wp-content/uploads/2021/01/The-story-of-114-Odisha-villages-Inside-Image.jpg',
+    'https://media-cdn.tripadvisor.com/media/photo-s/17/7d/66/f2/children-playing-in-the.jpg',
+    'https://scoonews.com/wp-content/uploads/2022/07/kids-school-60cc773e912d316243546261624354626.jpg',
+    'https://i.pinimg.com/736x/7d/3d/db/7d3ddb1f8b6a15564a890b68de8fd82d.jpg',
+    'https://images.indianexpress.com/2019/07/tribal-student.jpg?w=1200',
+    'https://akm-img-a-in.tosshub.com/indiatoday/images/story/202004/children-876543_1280__1__1.jpeg?size=690:388',
+    'https://media.gettyimages.com/id/1500323507/photo/a-doctor-examining-a-young-pregnant-woman-as-part-of-a-medical-health-care-camp-in-a-village.jpg?s=612x612&w=gi&k=20&c=7gmaFqcK-dVWLoLuvKeGNnzE8Hdk6yJ5I1jVR1tyKR4=',
+    'https://i.ytimg.com/vi/2TvLVI82qvg/hq720.jpg?sqi=2',
   ];
 
   useEffect(() => {
@@ -186,8 +192,10 @@ const ProfilePage = () => {
   ];
 
   return (
-    <div className="pp-wrap" style={{ minHeight: '100vh', display: 'flex', position: 'relative', overflow: 'hidden' }}>
+    <div className="pp-wrap" style={{ minHeight: '100vh', display: 'flex', position: 'relative', overflow: 'hidden', background: 'var(--bg-primary)' }}>
       <ProfileStyles />
+
+      <ThemeToggle variant="floating" />
 
       {/* Success Toast */}
       {showSuccess && (
@@ -197,7 +205,7 @@ const ProfilePage = () => {
       )}
 
       {/* ── LEFT PANEL — Profile Form ── */}
-      <div style={{ flex: '1 1 50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg,#f0fdf4,#fff)', padding: '32px 20px', overflowY: 'auto', minHeight: '100vh' }}>
+      <div style={{ flex: '1 1 50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', padding: '32px 20px', overflowY: 'auto', minHeight: '100vh' }}>
         <div className="pp-card-in" style={{ width: '100%', maxWidth: 500, position: 'relative', zIndex: 1 }}>
 
           {/* Logo */}
@@ -207,17 +215,17 @@ const ProfilePage = () => {
                 <Mic size={32} color="#fff" />
               </div>
             </div>
-            <h1 style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 800, fontSize: 26, color: '#14532d' }}>My Profile</h1>
+            <h1 style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 800, fontSize: 26, color: 'var(--text-primary)' }}>My Profile</h1>
             <p style={{ fontFamily: "'Noto Sans Devanagari',sans-serif", color: '#22c55e', fontSize: 14, fontWeight: 600 }}>मेरी प्रोफाइल</p>
           </div>
 
           {/* Header with edit button */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
             <div>
-              <h2 style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 800, fontSize: 22, color: '#14532d', marginBottom: 4 }}>
+              <h2 style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 800, fontSize: 22, color: 'var(--text-primary)', marginBottom: 4 }}>
                 {formData.name || 'Rural Citizen'}
               </h2>
-              <p style={{ color: '#6b7280', fontSize: 12 }}>Member since {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Member since {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</p>
             </div>
             <button className="pp-btn-edit" onClick={() => setIsEditing(v => !v)}>
               <Edit2 size={14} /> {isEditing ? 'Cancel' : 'Edit'}
@@ -242,21 +250,21 @@ const ProfilePage = () => {
                 <div style={{ width: 32, height: 32, borderRadius: 8, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 6px' }}>
                   <s.icon size={14} color={s.color} />
                 </div>
-                <div style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 800, fontSize: 16, color: '#14532d' }}>{s.value}</div>
-                <div style={{ fontSize: 10, color: '#9ca3af' }}>{s.label}</div>
+                <div style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>{s.value}</div>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{s.label}</div>
               </div>
             ))}
           </div>
 
           {/* Profile Info Card */}
-          <div style={{ background: '#fff', borderRadius: 20, border: '1.5px solid #f0fdf4', overflow: 'hidden', marginBottom: 16 }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1.5px solid #f0fdf4', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ background: 'var(--card-bg)', borderRadius: 20, border: '1.5px solid var(--border)', overflow: 'hidden', marginBottom: 16 }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1.5px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 32, height: 32, borderRadius: 10, background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <User size={16} color="#15803d" />
               </div>
               <div>
-                <div style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 700, fontSize: 14, color: '#14532d' }}>Personal Information</div>
-                <div style={{ fontSize: 10, color: '#9ca3af' }}>व्यक्तिगत जानकारी</div>
+                <div style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Personal Information</div>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>व्यक्तिगत जानकारी</div>
               </div>
             </div>
 
@@ -265,27 +273,27 @@ const ProfilePage = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <Mail size={14} color="#15803d" />
-                    <div><div style={{ fontSize: 10, color: '#9ca3af' }}>Email</div><div style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>{formData.email || '—'}</div></div>
+                    <div><div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Email</div><div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{formData.email || '—'}</div></div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <Phone size={14} color="#15803d" />
-                    <div><div style={{ fontSize: 10, color: '#9ca3af' }}>Phone</div><div style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>{formData.phone || '—'}</div></div>
+                    <div><div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Phone</div><div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{formData.phone || '—'}</div></div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <MapPin size={14} color="#15803d" />
-                    <div><div style={{ fontSize: 10, color: '#9ca3af' }}>Location</div><div style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>{formData.location || 'Not set'}</div></div>
+                    <div><div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Location</div><div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{formData.location || 'Not set'}</div></div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <Briefcase size={14} color="#15803d" />
-                    <div><div style={{ fontSize: 10, color: '#9ca3af' }}>Occupation</div><div style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>{getOccLabel(formData.occupation)}</div></div>
+                    <div><div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Occupation</div><div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{getOccLabel(formData.occupation)}</div></div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <DollarSign size={14} color={getIncColor(formData.income_level)} />
-                    <div><div style={{ fontSize: 10, color: '#9ca3af' }}>Income Level</div><div style={{ fontSize: 13, fontWeight: 500, color: getIncColor(formData.income_level) }}>{getIncLabel(formData.income_level)}</div></div>
+                    <div><div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Income Level</div><div style={{ fontSize: 13, fontWeight: 500, color: getIncColor(formData.income_level) }}>{getIncLabel(formData.income_level)}</div></div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <Globe size={14} color="#15803d" />
-                    <div><div style={{ fontSize: 10, color: '#9ca3af' }}>Language</div><div style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>{formData.language}</div></div>
+                    <div><div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Language</div><div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{formData.language}</div></div>
                   </div>
                 </div>
               ) : (
@@ -312,14 +320,14 @@ const ProfilePage = () => {
           </div>
 
           {/* Preferences Card */}
-          <div style={{ background: '#fff', borderRadius: 20, border: '1.5px solid #f0fdf4', overflow: 'hidden', marginBottom: 16 }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1.5px solid #f0fdf4', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ background: 'var(--card-bg)', borderRadius: 20, border: '1.5px solid var(--border)', overflow: 'hidden', marginBottom: 16 }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1.5px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 32, height: 32, borderRadius: 10, background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Settings size={16} color="#1d4ed8" />
               </div>
               <div>
-                <div style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 700, fontSize: 14, color: '#14532d' }}>Preferences</div>
-                <div style={{ fontSize: 10, color: '#9ca3af' }}>प्राथमिकताएं</div>
+                <div style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Preferences</div>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>प्राथमिकताएं</div>
               </div>
             </div>
             <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -330,7 +338,7 @@ const ProfilePage = () => {
                 <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Icon size={16} color="#15803d" />
-                    <span style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>{label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{label}</span>
                   </div>
                   <label className="pp-toggle">
                     <input type="checkbox" checked={formData[key]} onChange={e => set(key, e.target.checked)} />
@@ -348,12 +356,12 @@ const ProfilePage = () => {
 
           {/* Footer */}
           <div style={{ textAlign: 'center', marginTop: 20, paddingBottom: 16 }}>
-            <p style={{ fontSize: 11, color: '#9ca3af' }}>Sahaayak AI · Made with ❤️ for Rural India</p>
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Sahaayak AI · Made with ❤️ for Rural India</p>
           </div>
         </div>
       </div>
 
-      {/* ── RIGHT PANEL — Hero Image & Branding (with logo and headline at TOP) ── */}
+      {/* ── RIGHT PANEL — Hero Image & Branding ── */}
       <div style={{ flex: '1 1 50%', position: 'relative', display: 'none', minHeight: '100vh' }} className="pp-right">
         <style>{`@media(min-width: 900px) { .pp-right { display: block !important; } }`}</style>
 
@@ -362,10 +370,7 @@ const ProfilePage = () => {
         ))}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(0,40,0,0.7) 0%, rgba(0,80,0,0.4) 60%, rgba(0,0,0,0.5) 100%)' }} />
 
-        {/* Right overlay content - with logo and headline at TOP */}
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '40px 48px 48px' }}>
-          
-          {/* Top section - Logo and Branding */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
               <div style={{ position: 'relative' }} className="pp-float">
@@ -387,9 +392,7 @@ const ProfilePage = () => {
             </p>
           </div>
 
-          {/* Bottom section - Language pills and trust badges */}
           <div>
-            {/* Language pills */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
               {langPills.map(p => (
                 <span key={p.text} style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', color: '#fff', padding: '5px 14px', borderRadius: 999, fontSize: 12, fontFamily: "'Noto Sans Devanagari','Baloo 2',sans-serif", fontWeight: 600, border: '1px solid rgba(255,255,255,0.2)' }}>
@@ -398,7 +401,6 @@ const ProfilePage = () => {
               ))}
             </div>
 
-            {/* Trust badges */}
             <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
               {[['🆓', '100% Free'], ['🎙️', 'Voice First'], ['📶', 'Works on 2G'], ['🔒', 'Private']].map(([icon, label]) => (
                 <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>
@@ -409,7 +411,6 @@ const ProfilePage = () => {
           </div>
         </div>
 
-        {/* Image dots */}
         <div style={{ position: 'absolute', bottom: 24, right: 48, display: 'flex', gap: 6 }}>
           {heroImages.map((_, i) => (
             <div key={i} style={{ width: i === imgIdx ? 20 : 6, height: 6, borderRadius: 3, background: i === imgIdx ? '#22c55e' : 'rgba(255,255,255,0.4)', transition: 'width 0.4s, background 0.4s' }} />
