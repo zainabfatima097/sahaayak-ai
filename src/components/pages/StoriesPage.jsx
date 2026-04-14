@@ -3,6 +3,8 @@ import { useStories } from '../../hooks/useStories';
 import StoryCard from '../../components/stories/StoryCard';
 import PostStoryModal from '../../components/stories/PostStoryModal';
 import { MessageCircle, Filter, Sparkles, Loader2, Plus, BookOpen, Heart, Users, Star } from 'lucide-react';
+import ThemeToggle from '../common/ThemeToggle';
+import { useTheme } from '../../context/ThemeContext';
 
 /* ─── Injected global styles (matching HomePage) ─────────────────── */
 const StoriesGlobalStyles = () => (
@@ -76,12 +78,6 @@ const StoriesGlobalStyles = () => (
     /* filter pill active */
     .s-filter-active { background: #16a34a !important; color: #fff !important; }
 
-    /* scroll indicator */
-    @keyframes sScrollDown {
-      0%   { transform: translateY(0); opacity:1; }
-      100% { transform: translateY(10px); opacity:0; }
-    }
-    .s-scroll-dot { animation: sScrollDown 1.5s ease-in-out infinite; }
 
     /* pulse */
     @keyframes sPulse {
@@ -97,10 +93,11 @@ const StoriesGlobalStyles = () => (
     @keyframes sMarquee { 0%{ transform:translateX(0) } 100%{ transform:translateX(-50%) } }
     .s-marquee-inner { display:flex; gap:12px; animation: sMarquee 32s linear infinite; }
     .s-marquee-inner:hover { animation-play-state: paused; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
   `}</style>
 );
 
-/* ─── Scroll reveal hook ─────────────────────────────────────────── */
 function useScrollReveal(dep) {
   useEffect(() => {
     const els = document.querySelectorAll('.s-reveal');
@@ -113,25 +110,25 @@ function useScrollReveal(dep) {
   }, [dep]);
 }
 
-/* ─── Stat counter ───────────────────────────────────────────────── */
 const StatBadge = ({ icon: Icon, value, label, color, bg, delay = 0 }) => (
   <div className="s-stat-pop" style={{
     animationDelay: `${delay}ms`,
-    background: '#fff', borderRadius: 'var(--radius-lg)',
-    padding: '20px 16px', textAlign: 'center',
-    border: `1.5px solid ${bg}`,
+    background: 'var(--card-bg)',
+    borderRadius: 'var(--radius-lg)',
+    padding: '20px 16px',
+    textAlign: 'center',
+    border: `1.5px solid var(--border)`,
     boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
     minWidth: 120,
   }}>
     <div style={{ width: 44, height: 44, borderRadius: 12, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
       <Icon size={20} color={color} />
     </div>
-    <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, color: '#14532d', marginBottom: 2 }}>{value}</div>
-    <p style={{ color: '#6b7280', fontSize: 12, lineHeight: 1.4 }}>{label}</p>
+    <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 2 }}>{value}</div>
+    <p style={{ color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.4 }}>{label}</p>
   </div>
 );
 
-/* ─── Domain pill for marquee ────────────────────────────────────── */
 const DomainPill = ({ icon, text, color, textColor }) => (
   <div style={{
     display: 'flex', alignItems: 'center', gap: 8,
@@ -144,7 +141,6 @@ const DomainPill = ({ icon, text, color, textColor }) => (
   </div>
 );
 
-/* ─── Main Component ─────────────────────────────────────────────── */
 const StoriesPage = () => {
   const { stories, isLoading, filters, setFilters, postStory, handleHelpful, deleteStory, updateStory } = useStories();
   const [showPostModal, setShowPostModal] = useState(false);
@@ -153,16 +149,20 @@ const StoriesPage = () => {
   const [statsVisible, setStatsVisible] = useState(false);
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const statsRef = useRef(null);
+  const { isDarkMode } = useTheme();
 
   useScrollReveal(stories.length);
 
   // Hero images — working direct URLs from Pexels
   const heroImages = [
-    'https://images.pexels.com/photos/3807571/pexels-photo-3807571.jpeg?auto=compress&cs=tinysrgb&w=1920&h=700&fit=crop',
-    'https://images.pexels.com/photos/2519370/pexels-photo-2519370.jpeg?auto=compress&cs=tinysrgb&w=1920&h=700&fit=crop',
-    'https://images.pexels.com/photos/5212361/pexels-photo-5212361.jpeg?auto=compress&cs=tinysrgb&w=1920&h=700&fit=crop',
-    'https://images.pexels.com/photos/4040622/pexels-photo-4040622.jpeg?auto=compress&cs=tinysrgb&w=1920&h=700&fit=crop',
-    'https://images.pexels.com/photos/3721941/pexels-photo-3721941.jpeg?auto=compress&cs=tinysrgb&w=1920&h=700&fit=crop',
+    'https://www.actionaidindia.org/wp-content/uploads/2021/01/The-story-of-114-Odisha-villages-Inside-Image.jpg',
+    'https://media-cdn.tripadvisor.com/media/photo-s/17/7d/66/f2/children-playing-in-the.jpg',
+    'https://scoonews.com/wp-content/uploads/2022/07/kids-school-60cc773e912d316243546261624354626.jpg',
+    'https://i.pinimg.com/736x/7d/3d/db/7d3ddb1f8b6a15564a890b68de8fd82d.jpg',
+    'https://images.indianexpress.com/2019/07/tribal-student.jpg?w=1200',
+    'https://akm-img-a-in.tosshub.com/indiatoday/images/story/202004/children-876543_1280__1__1.jpeg?size=690:388',
+    'https://media.gettyimages.com/id/1500323507/photo/a-doctor-examining-a-young-pregnant-woman-as-part-of-a-medical-health-care-camp-in-a-village.jpg?s=612x612&w=gi&k=20&c=7gmaFqcK-dVWLoLuvKeGNnzE8Hdk6yJ5I1jVR1tyKR4=',
+    'https://i.ytimg.com/vi/2TvLVI82qvg/hq720.jpg?sqi=2',
   ];
 
   // Preload images to prevent blank screen
@@ -238,8 +238,10 @@ const StoriesPage = () => {
   ];
 
   return (
-    <div className="stories-page" style={{ background: '#fff', overflowX: 'hidden', minHeight: '100vh' }}>
+    <div className="stories-page" style={{ background: 'var(--bg-primary)', overflowX: 'hidden', minHeight: '100vh' }}>
       <StoriesGlobalStyles />
+      
+      <ThemeToggle variant="floating" />
 
       {/* ── HERO ──────────────────────────────────────────────────── */}
       <section style={{ position: 'relative', height: 480, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
@@ -256,9 +258,8 @@ const StoriesPage = () => {
           />
         ))}
 
-        {/* Show loading placeholder while images load */}
         {!imagesLoaded && (
-          <div style={{ position: 'absolute', inset: 0, background: '#14532d', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5 }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5 }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ width: 48, height: 48, borderRadius: '50%', border: '3px solid #86efac', borderTopColor: 'transparent', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
               <p style={{ color: '#86efac', fontFamily: 'var(--font-display)' }}>Loading stories...</p>
@@ -266,17 +267,13 @@ const StoriesPage = () => {
           </div>
         )}
 
-        {/* Layered overlays */}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(0,0,0,0.78) 0%, rgba(0,30,0,0.6) 50%, rgba(0,0,0,0.72) 100%)' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(20,83,45,0.6) 0%, transparent 60%)' }} />
 
-        {/* Decorative circles */}
         <div style={{ position: 'absolute', top: '8%', right: '6%', width: 280, height: 280, borderRadius: '50%', background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.15)' }} />
         <div style={{ position: 'absolute', bottom: '10%', left: '4%', width: 180, height: 180, borderRadius: '50%', background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.1)' }} />
 
-        {/* Hero content */}
         <div style={{ position: 'relative', zIndex: 10, textAlign: 'center', padding: '0 24px', maxWidth: 720, margin: '0 auto' }}>
-          {/* Floating icon */}
           <div className="s-float" style={{ marginBottom: 20 }}>
             <div style={{
               width: 72, height: 72, borderRadius: '50%',
@@ -288,7 +285,6 @@ const StoriesPage = () => {
             </div>
           </div>
 
-          {/* Tag */}
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             background: 'rgba(34,197,94,0.2)', backdropFilter: 'blur(8px)',
@@ -317,7 +313,6 @@ const StoriesPage = () => {
             </span>
           </p>
 
-          {/* CTA */}
           <button
             onClick={() => setShowPostModal(true)}
             style={{
@@ -335,12 +330,7 @@ const StoriesPage = () => {
           </button>
         </div>
 
-        {/* Scroll indicator */}
-        <div style={{ position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-          <div style={{ width: 24, height: 38, border: '2px solid rgba(255,255,255,0.35)', borderRadius: 12, display: 'flex', justifyContent: 'center', paddingTop: 6 }}>
-            <div className="s-scroll-dot" style={{ width: 4, height: 7, borderRadius: 2, background: '#86efac' }} />
-          </div>
-        </div>
+        
       </section>
 
       {/* ── DOMAIN MARQUEE ───────────────────────────────────────── */}
@@ -353,7 +343,7 @@ const StoriesPage = () => {
       </div>
 
       {/* ── STATS STRIP ──────────────────────────────────────────── */}
-      <section ref={statsRef} style={{ padding: '52px 24px', background: 'linear-gradient(135deg,#f0fdf4,#ecfdf5)', position: 'relative', overflow: 'hidden' }}>
+      <section ref={statsRef} style={{ padding: '52px 24px', background: 'var(--bg-secondary)', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: -60, right: -60, width: 300, height: 300, borderRadius: '50%', background: 'rgba(34,197,94,0.06)' }} />
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
@@ -365,7 +355,7 @@ const StoriesPage = () => {
       </section>
 
       {/* ── FILTERS + CONTENT ────────────────────────────────────── */}
-      <section style={{ padding: '52px 24px 80px', background: '#fff' }}>
+      <section style={{ padding: '52px 24px 80px', background: 'var(--bg-primary)' }}>
         <div style={{ maxWidth: 860, margin: '0 auto' }}>
 
           {/* Section header */}
@@ -376,10 +366,10 @@ const StoriesPage = () => {
             }}>
               📖 COMMUNITY STORIES
             </span>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.6rem,3vw,2.4rem)', fontWeight: 800, color: '#14532d', marginBottom: 8 }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.6rem,3vw,2.4rem)', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8 }}>
               जीवन बदलने वाली कहानियां
             </h2>
-            <p style={{ color: '#6b7280', fontSize: 16 }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 16 }}>
               Read how Sahaayak AI helped real families across rural India
             </p>
           </div>
@@ -406,9 +396,9 @@ const StoriesPage = () => {
               onClick={() => setShowFilters(!showFilters)}
               style={{
                 padding: '13px 22px', borderRadius: 'var(--radius-full)',
-                background: showFilters ? '#dcfce7' : '#fff',
-                border: `1.5px solid ${showFilters ? '#86efac' : '#e5e7eb'}`,
-                color: showFilters ? '#15803d' : '#374151',
+                background: showFilters ? '#dcfce7' : 'var(--bg-primary)',
+                border: `1.5px solid ${showFilters ? '#86efac' : 'var(--border)'}`,
+                color: showFilters ? '#15803d' : 'var(--text-primary)',
                 fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15,
                 cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
                 transition: 'all 0.2s',
@@ -421,8 +411,9 @@ const StoriesPage = () => {
           {/* Filters panel */}
           {showFilters && (
             <div className="s-reveal visible" style={{
-              background: 'linear-gradient(135deg,#f0fdf4,#ecfdf5)',
-              border: '1.5px solid #bbf7d0', borderRadius: 'var(--radius-xl)',
+              background: 'var(--bg-secondary)',
+              border: '1.5px solid var(--border)',
+              borderRadius: 'var(--radius-xl)',
               padding: '24px', marginBottom: 28,
               boxShadow: '0 4px 24px rgba(0,0,0,0.05)',
             }}>
@@ -441,8 +432,8 @@ const StoriesPage = () => {
                         border: 'none', cursor: 'pointer',
                         fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14,
                         transition: 'all 0.2s',
-                        background: filters.domain === d.id ? '#16a34a' : '#fff',
-                        color: filters.domain === d.id ? '#fff' : '#374151',
+                        background: filters.domain === d.id ? '#16a34a' : 'var(--bg-primary)',
+                        color: filters.domain === d.id ? '#fff' : 'var(--text-primary)',
                         boxShadow: filters.domain === d.id ? '0 4px 14px rgba(22,163,74,0.35)' : '0 1px 4px rgba(0,0,0,0.08)',
                       }}
                     >
@@ -467,8 +458,8 @@ const StoriesPage = () => {
                         border: 'none', cursor: 'pointer',
                         fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14,
                         transition: 'all 0.2s',
-                        background: filters.language === lang.id ? '#16a34a' : '#fff',
-                        color: filters.language === lang.id ? '#fff' : '#374151',
+                        background: filters.language === lang.id ? '#16a34a' : 'var(--bg-primary)',
+                        color: filters.language === lang.id ? '#fff' : 'var(--text-primary)',
                         boxShadow: filters.language === lang.id ? '0 4px 14px rgba(22,163,74,0.35)' : '0 1px 4px rgba(0,0,0,0.08)',
                       }}
                     >
@@ -498,14 +489,15 @@ const StoriesPage = () => {
           ) : stories.length === 0 ? (
             <div className="s-reveal" style={{
               textAlign: 'center', padding: '80px 24px',
-              background: 'linear-gradient(135deg,#f0fdf4,#ecfdf5)',
-              borderRadius: 'var(--radius-xl)', border: '2px dashed #bbf7d0',
+              background: 'var(--bg-secondary)',
+              borderRadius: 'var(--radius-xl)',
+              border: '2px dashed var(--border)',
             }}>
               <div style={{ fontSize: 64, marginBottom: 16 }}>📖</div>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, color: '#14532d', marginBottom: 8 }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8 }}>
                 अभी तक कोई कहानी नहीं
               </h3>
-              <p style={{ color: '#6b7280', marginBottom: 24 }}>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
                 Be the first to share your success story and inspire thousands!
               </p>
               <button
