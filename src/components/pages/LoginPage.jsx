@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserContext } from '../../context/UserContext';
 import { Mail, Lock, ArrowRight, Eye, EyeOff, User, Shield, Smartphone, ChevronRight, Mic } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
+import ThemeToggle from '../common/ThemeToggle';
 
 /* ── Styles ───────────────────────────────────────────────────────── */
 const LoginStyles = () => (
@@ -33,9 +35,9 @@ const LoginStyles = () => (
     .lp-tab-active { animation:lp-tab-slide 0.25s ease both; }
 
     /* input styles */
-    .lp-input { width:100%; border:1.5px solid #e5e7eb; border-radius:14px; padding:13px 14px 13px 42px; font-size:15px; font-family:'Noto Sans',sans-serif; color:#1f2937; background:#fff; transition:border-color 0.2s, box-shadow 0.2s; outline:none; }
+    .lp-input { width:100%; border:1.5px solid var(--border); border-radius:14px; padding:13px 14px 13px 42px; font-size:15px; font-family:'Noto Sans',sans-serif; color:var(--text-primary); background:var(--bg-primary); transition:border-color 0.2s, box-shadow 0.2s; outline:none; }
     .lp-input:focus { border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,0.15); }
-    .lp-input::placeholder { color:#9ca3af; }
+    .lp-input::placeholder { color:var(--text-tertiary); }
 
     /* primary button */
     .lp-btn-primary { width:100%; background:linear-gradient(135deg,#16a34a,#10b981); color:#fff; border:none; border-radius:14px; padding:14px; font-family:'Baloo 2',sans-serif; font-weight:700; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:transform 0.2s, box-shadow 0.2s; }
@@ -43,20 +45,16 @@ const LoginStyles = () => (
     .lp-btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
 
     /* google button */
-    .lp-btn-google { width:100%; background:#fff; border:1.5px solid #e5e7eb; border-radius:14px; padding:13px 20px; display:flex; align-items:center; justify-content:center; gap:10px; font-family:'Baloo 2',sans-serif; font-weight:600; font-size:15px; color:#374151; cursor:pointer; transition:all 0.2s; }
+    .lp-btn-google { width:100%; background:var(--bg-primary); border:1.5px solid var(--border); border-radius:14px; padding:13px 20px; display:flex; align-items:center; justify-content:center; gap:10px; font-family:'Baloo 2',sans-serif; font-weight:600; font-size:15px; color:var(--text-primary); cursor:pointer; transition:all 0.2s; }
     .lp-btn-google:hover:not(:disabled) { border-color:#22c55e; box-shadow:0 4px 16px rgba(0,0,0,0.08); transform:translateY(-1px); }
 
     /* guest link */
     .lp-guest { background:none; border:none; color:#15803d; font-size:14px; cursor:pointer; display:inline-flex; align-items:center; gap:5px; padding:0; font-family:'Baloo 2',sans-serif; font-weight:600; transition:color 0.15s; }
     .lp-guest:hover { color:#166534; }
 
-    /* language pills row */
-    .lp-lang-pill { display:inline-flex; align-items:center; padding:4px 12px; borderRadius:999px; fontSize:12px; fontWeight:600; whiteSpace:nowrap; }
-
     @keyframes lp-spin { to{transform:rotate(360deg)} }
     .lp-spin { animation:lp-spin 1s linear infinite; }
 
-    /* scrollbar */
     .lp-wrap::-webkit-scrollbar { display:none; }
   `}</style>
 );
@@ -73,12 +71,18 @@ const LoginPage = () => {
   const [name, setName] = useState('');
   const [imgIdx, setImgIdx] = useState(0);
 
+  const { isDarkMode, toggleTheme } = useTheme();
+
   /* hero images — rural India */
   const heroImages = [
-    'https://images.pexels.com/photos/2132180/pexels-photo-2132180.jpeg?auto=compress&cs=tinysrgb&w=1400&h=900&fit=crop',
-    'https://images.pexels.com/photos/3601421/pexels-photo-3601421.jpeg?auto=compress&cs=tinysrgb&w=1400&h=900&fit=crop',
-    'https://images.pexels.com/photos/8471844/pexels-photo-8471844.jpeg?auto=compress&cs=tinysrgb&w=1400&h=900&fit=crop',
-    'https://images.pexels.com/photos/1459936/pexels-photo-1459936.jpeg?auto=compress&cs=tinysrgb&w=1400&h=900&fit=crop',
+    'https://www.actionaidindia.org/wp-content/uploads/2021/01/The-story-of-114-Odisha-villages-Inside-Image.jpg',
+    'https://media-cdn.tripadvisor.com/media/photo-s/17/7d/66/f2/children-playing-in-the.jpg',
+    'https://scoonews.com/wp-content/uploads/2022/07/kids-school-60cc773e912d316243546261624354626.jpg',
+    'https://i.pinimg.com/736x/7d/3d/db/7d3ddb1f8b6a15564a890b68de8fd82d.jpg',
+    'https://images.indianexpress.com/2019/07/tribal-student.jpg?w=1200',
+    'https://akm-img-a-in.tosshub.com/indiatoday/images/story/202004/children-876543_1280__1__1.jpeg?size=690:388',
+    'https://media.gettyimages.com/id/1500323507/photo/a-doctor-examining-a-young-pregnant-woman-as-part-of-a-medical-health-care-camp-in-a-village.jpg?s=612x612&w=gi&k=20&c=7gmaFqcK-dVWLoLuvKeGNnzE8Hdk6yJ5I1jVR1tyKR4=',
+    'https://i.ytimg.com/vi/2TvLVI82qvg/hq720.jpg?sqi=2',
   ];
 
   useEffect(() => {
@@ -114,8 +118,10 @@ const LoginPage = () => {
   ];
 
   return (
-    <div className="lp-wrap" style={{ minHeight:'100vh', display:'flex', position:'relative', overflow:'hidden' }}>
+    <div className="lp-wrap" style={{ minHeight:'100vh', display:'flex', position:'relative', overflow:'hidden', background:'var(--bg-primary)' }}>
       <LoginStyles />
+
+      <ThemeToggle variant="floating" />
 
       {/* ── Left panel — hero image (desktop) ── */}
       <div style={{ flex:'1 1 50%', position:'relative', display:'none', minHeight:'100vh' }} className="lp-left">
@@ -176,7 +182,7 @@ const LoginPage = () => {
       </div>
 
       {/* ── Right panel — form ── */}
-      <div style={{ flex:'1 1 50%', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(160deg,#f0fdf4,#fff)', padding:'32px 20px', overflowY:'auto', minHeight:'100vh' }}>
+      <div style={{ flex:'1 1 50%', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg-secondary)', padding:'32px 20px', overflowY:'auto', minHeight:'100vh' }}>
 
         {/* Mobile background blur blobs */}
         <div style={{ position:'absolute', top:-60, right:-60, width:240, height:240, borderRadius:'50%', background:'rgba(34,197,94,0.08)', pointerEvents:'none' }} />
@@ -192,28 +198,28 @@ const LoginPage = () => {
                 <Mic size={32} color="#fff" />
               </div>
             </div>
-            <h1 style={{ fontFamily:"'Baloo 2',sans-serif", fontWeight:800, fontSize:26, color:'#14532d' }}>Sahaayak AI</h1>
+            <h1 style={{ fontFamily:"'Baloo 2',sans-serif", fontWeight:800, fontSize:26, color:'var(--text-primary)' }}>Sahaayak AI</h1>
             <p style={{ fontFamily:"'Noto Sans Devanagari',sans-serif", color:'#22c55e', fontSize:14, fontWeight:600 }}>आपका मददगार</p>
           </div>
 
           {/* Form header */}
           <div style={{ marginBottom:24 }}>
-            <h2 style={{ fontFamily:"'Baloo 2',sans-serif", fontWeight:800, fontSize:22, color:'#14532d', marginBottom:4 }}>
+            <h2 style={{ fontFamily:"'Baloo 2',sans-serif", fontWeight:800, fontSize:22, color:'var(--text-primary)', marginBottom:4 }}>
               {isLogin ? 'Welcome back! 👋' : 'Create Account'}
             </h2>
-            <p style={{ color:'#6b7280', fontSize:14 }}>
+            <p style={{ color:'var(--text-secondary)', fontSize:14 }}>
               {isLogin ? 'Log in to access your services · अपनी सेवाओं तक पहुंचें' : 'Join thousands of rural citizens · आज शामिल हों'}
             </p>
           </div>
 
           {/* Login / Sign up toggle */}
-          <div style={{ display:'flex', background:'#f3f4f6', borderRadius:14, padding:4, marginBottom:24 }}>
+          <div style={{ display:'flex', background:'var(--bg-tertiary)', borderRadius:14, padding:4, marginBottom:24 }}>
             {[{ val:true, label:'Login · लॉग इन' },{ val:false, label:'Sign Up · साइन अप' }].map(({ val, label }) => (
               <button key={String(val)} onClick={() => setIsLogin(val)}
                 className={isLogin===val ? 'lp-tab-active' : ''}
                 style={{ flex:1, padding:'10px', borderRadius:11, border:'none', cursor:'pointer', fontFamily:"'Baloo 2',sans-serif", fontWeight:700, fontSize:14, transition:'all 0.25s',
                   background: isLogin===val ? 'linear-gradient(135deg,#16a34a,#10b981)' : 'transparent',
-                  color: isLogin===val ? '#fff' : '#6b7280',
+                  color: isLogin===val ? '#fff' : 'var(--text-secondary)',
                   boxShadow: isLogin===val ? '0 4px 16px rgba(22,163,74,0.3)' : 'none',
                 }}>
                 {label}
@@ -230,42 +236,42 @@ const LoginPage = () => {
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
             </svg>
             <span>Continue with Google</span>
-            <ChevronRight size={16} color="#9ca3af" />
+            <ChevronRight size={16} color="var(--text-tertiary)" />
           </button>
 
           {/* Divider */}
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
-            <div style={{ flex:1, height:1, background:'#e5e7eb' }} />
-            <span style={{ fontSize:12, color:'#9ca3af', whiteSpace:'nowrap' }}>or with email · ईमेल से</span>
-            <div style={{ flex:1, height:1, background:'#e5e7eb' }} />
+            <div style={{ flex:1, height:1, background:'var(--border)' }} />
+            <span style={{ fontSize:12, color:'var(--text-tertiary)', whiteSpace:'nowrap' }}>or with email · ईमेल से</span>
+            <div style={{ flex:1, height:1, background:'var(--border)' }} />
           </div>
 
           {/* Email form */}
           <form onSubmit={handleEmailSubmit} style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {!isLogin && (
               <div style={{ position:'relative' }}>
-                <User size={17} color="#9ca3af" style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} />
+                <User size={17} color="var(--text-tertiary)" style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} />
                 <input className="lp-input" type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="Full name · पूरा नाम" required={!isLogin} />
               </div>
             )}
 
             <div style={{ position:'relative' }}>
-              <Mail size={17} color="#9ca3af" style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} />
+              <Mail size={17} color="var(--text-tertiary)" style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} />
               <input className="lp-input" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email address · ईमेल" required />
             </div>
 
             <div style={{ position:'relative' }}>
-              <Lock size={17} color="#9ca3af" style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} />
+              <Lock size={17} color="var(--text-tertiary)" style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} />
               <input className="lp-input" type={showPassword ? 'text' : 'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password · पासवर्ड" required style={{ paddingRight:44 }} />
               <button type="button" onClick={()=>setShowPassword(v=>!v)}
-                style={{ position:'absolute', right:14, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'#9ca3af', padding:0, display:'flex' }}>
+                style={{ position:'absolute', right:14, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'var(--text-tertiary)', padding:0, display:'flex' }}>
                 {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
               </button>
             </div>
 
             {isLogin && (
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontSize:13, color:'#6b7280' }}>
+                <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontSize:13, color:'var(--text-secondary)' }}>
                   <input type="checkbox" checked={rememberMe} onChange={e=>setRememberMe(e.target.checked)}
                     style={{ width:15, height:15, accentColor:'#16a34a' }} />
                   Remember me · याद रखें
@@ -291,17 +297,17 @@ const LoginPage = () => {
           </div>
 
           {/* Trust row */}
-          <div style={{ marginTop:20, paddingTop:16, borderTop:'1px solid #f0fdf4', display:'flex', justifyContent:'center', gap:20, flexWrap:'wrap' }}>
+          <div style={{ marginTop:20, paddingTop:16, borderTop:'1px solid var(--border)', display:'flex', justifyContent:'center', gap:20, flexWrap:'wrap' }}>
             {[{ icon:Shield, label:'Secure', labelHi:'सुरक्षित' },{ icon:Smartphone, label:'24/7 Help', labelHi:'सहायता' }].map(({ icon:Icon, label, labelHi }) => (
               <div key={label} style={{ display:'flex', alignItems:'center', gap:6 }}>
                 <Icon size={14} color="#22c55e" />
-                <span style={{ fontSize:12, color:'#6b7280' }}>{label}</span>
-                <span style={{ fontSize:11, color:'#9ca3af', fontFamily:"'Noto Sans Devanagari',sans-serif" }}>· {labelHi}</span>
+                <span style={{ fontSize:12, color:'var(--text-secondary)' }}>{label}</span>
+                <span style={{ fontSize:11, color:'var(--text-tertiary)', fontFamily:"'Noto Sans Devanagari',sans-serif" }}>· {labelHi}</span>
               </div>
             ))}
           </div>
 
-          <p style={{ fontSize:11, color:'#9ca3af', textAlign:'center', marginTop:12 }}>
+          <p style={{ fontSize:11, color:'var(--text-tertiary)', textAlign:'center', marginTop:12 }}>
             By continuing, you agree to our{' '}
             <button style={{ color:'#15803d', background:'none', border:'none', cursor:'pointer', fontSize:11, textDecoration:'underline' }}>Terms</button>
             {' & '}
