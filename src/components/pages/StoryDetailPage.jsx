@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { db, doc, getDoc, collection, addDoc, query, where, getDocs, deleteDoc, updateDoc, increment } from '../services/firebase/config';
 import { useUserContext } from '../../context/UserContext';
+import { useTheme } from '../../context/ThemeContext';
+import ThemeToggle from '../common/ThemeToggle';
 
 /* ─── Global styles matching StoriesPage ─────────────────────────── */
 const StoryDetailStyles = () => (
@@ -62,12 +64,13 @@ const StoryDetailStyles = () => (
       animation: sdHeartFloat 0.8s ease-out forwards;
     }
 
-    /* comment fade in */
     @keyframes sdCommentIn {
       from { opacity: 0; transform: translateX(-10px); }
       to { opacity: 1; transform: translateX(0); }
     }
     .sd-comment-in { animation: sdCommentIn 0.3s ease-out forwards; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
   `}</style>
 );
 
@@ -75,6 +78,7 @@ const StoryDetailPage = () => {
   const { storyId } = useParams();
   const navigate = useNavigate();
   const { userContext } = useUserContext();
+  const { isDarkMode } = useTheme();
   const [story, setStory] = useState(null);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
@@ -89,19 +93,19 @@ const StoryDetailPage = () => {
 
   const domainColors = {
     agriculture: { 
-      bg: 'bg-green-50', border: 'border-green-200', icon: '🌾', text: 'text-green-700', 
+      bg: 'var(--bg-secondary)', border: 'var(--border)', icon: '🌾', text: 'var(--text-primary)', 
       gradient: 'from-green-600 to-emerald-600', lightBg: '#dcfce7', primary: '#15803d'
     },
     healthcare: { 
-      bg: 'bg-red-50', border: 'border-red-200', icon: '🏥', text: 'text-red-700', 
+      bg: 'var(--bg-secondary)', border: 'var(--border)', icon: '🏥', text: 'var(--text-primary)', 
       gradient: 'from-red-600 to-rose-600', lightBg: '#fee2e2', primary: '#dc2626'
     },
     education: { 
-      bg: 'bg-blue-50', border: 'border-blue-200', icon: '📚', text: 'text-blue-700', 
+      bg: 'var(--bg-secondary)', border: 'var(--border)', icon: '📚', text: 'var(--text-primary)', 
       gradient: 'from-blue-600 to-cyan-600', lightBg: '#dbeafe', primary: '#1d4ed8'
     },
     schemes: { 
-      bg: 'bg-yellow-50', border: 'border-yellow-200', icon: '📋', text: 'text-yellow-700', 
+      bg: 'var(--bg-secondary)', border: 'var(--border)', icon: '📋', text: 'var(--text-primary)', 
       gradient: 'from-yellow-600 to-orange-600', lightBg: '#fef3c7', primary: '#b45309'
     }
   };
@@ -159,7 +163,6 @@ const StoryDetailPage = () => {
     setIsLiking(true);
     setLikeAnimation(true);
     
-    // Create floating heart effect
     const heartId = Date.now();
     setFloatingHearts(prev => [...prev, heartId]);
     setTimeout(() => {
@@ -276,8 +279,8 @@ const StoryDetailPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center">
-        <div style={{ textAlign: 'center' }}>
+      <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
+        <div style={{ textAlign: 'center', paddingTop: '100px' }}>
           <div style={{
             width: 64, height: 64, borderRadius: '50%',
             background: 'linear-gradient(135deg,#22c55e,#10b981)',
@@ -291,7 +294,6 @@ const StoryDetailPage = () => {
             Loading story...
           </p>
         </div>
-        <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
       </div>
     );
   }
@@ -301,9 +303,10 @@ const StoryDetailPage = () => {
   const isOwner = userContext.isAuthenticated && userContext.uid === story.userId;
 
   return (
-    <div className="sd-wrap" style={{ background: '#fff', minHeight: '100vh' }}>
+    <div className="sd-wrap" style={{ background: 'var(--bg-primary)', minHeight: '100vh' }}>
       <StoryDetailStyles />
-      <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
+      
+      <ThemeToggle variant="floating" />
 
       {/* Header with gradient matching StoriesPage */}
       <div style={{
@@ -316,7 +319,6 @@ const StoryDetailPage = () => {
         <div style={{ position: 'absolute', bottom: -60, left: -60, width: 250, height: 250, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
         
         <div className="sd-fade-in" style={{ maxWidth: 860, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          {/* Back button */}
           <button
             onClick={() => navigate('/stories')}
             style={{
@@ -335,7 +337,6 @@ const StoryDetailPage = () => {
             <ArrowLeft size={18} /> Back to Stories
           </button>
 
-          {/* Domain badge */}
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
             background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)',
@@ -349,7 +350,6 @@ const StoryDetailPage = () => {
             </span>
           </div>
 
-          {/* Title */}
           <h1 style={{
             fontFamily: 'var(--font-display)',
             fontSize: 'clamp(1.8rem, 5vw, 2.8rem)',
@@ -361,7 +361,6 @@ const StoryDetailPage = () => {
             {story.title}
           </h1>
 
-          {/* Author info */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap', marginTop: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{
@@ -389,19 +388,19 @@ const StoryDetailPage = () => {
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '40px 24px 80px' }}>
         {/* Story Content Card */}
         <div className="sd-fade-in" style={{
-          background: '#fff',
+          background: 'var(--card-bg)',
           borderRadius: 'var(--radius-xl)',
-          border: '1.5px solid #f0fdf4',
+          border: '1.5px solid var(--border)',
           overflow: 'hidden',
           boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
           marginBottom: 32,
         }}>
           <div style={{
             padding: '32px',
-            borderBottom: '1.5px solid #f0fdf4',
+            borderBottom: '1.5px solid var(--border)',
           }}>
             <p style={{
-              color: '#374151',
+              color: 'var(--text-primary)',
               fontSize: '1.05rem',
               lineHeight: 1.8,
               whiteSpace: 'pre-wrap',
@@ -410,9 +409,8 @@ const StoryDetailPage = () => {
               {story.content}
             </p>
 
-            {/* Media */}
             {story.mediaType === 'image' && story.mediaUrl && (
-              <div style={{ marginTop: 24, borderRadius: 'var(--radius-lg)', overflow: 'hidden', background: '#f9fafb' }}>
+              <div style={{ marginTop: 24, borderRadius: 'var(--radius-lg)', overflow: 'hidden', background: 'var(--bg-secondary)' }}>
                 <img 
                   src={story.mediaUrl} 
                   alt={story.title}
@@ -436,13 +434,12 @@ const StoryDetailPage = () => {
           {/* Action Buttons */}
           <div style={{
             padding: '16px 32px',
-            background: '#f9fafb',
+            background: 'var(--bg-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 32,
             flexWrap: 'wrap',
           }}>
-            {/* Like Button with Animation */}
             <button
               onClick={handleLike}
               disabled={isLiking}
@@ -451,7 +448,7 @@ const StoryDetailPage = () => {
                 background: userLiked ? colors.lightBg : 'transparent',
                 padding: '8px 20px',
                 borderRadius: 'var(--radius-full)',
-                border: `1.5px solid ${userLiked ? colors.primary : '#e5e7eb'}`,
+                border: `1.5px solid ${userLiked ? colors.primary : 'var(--border)'}`,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
                 position: 'relative',
@@ -461,7 +458,7 @@ const StoryDetailPage = () => {
               <div style={{ position: 'relative' }}>
                 <ThumbsUp 
                   size={18} 
-                  color={userLiked ? colors.primary : '#6b7280'}
+                  color={userLiked ? colors.primary : 'var(--text-secondary)'}
                   style={{ transform: likeAnimation ? 'scale(1.2)' : 'scale(1)', transition: 'transform 0.2s' }}
                 />
                 {floatingHearts.map(id => (
@@ -470,12 +467,12 @@ const StoryDetailPage = () => {
                   </div>
                 ))}
               </div>
-              <span style={{ fontWeight: 600, color: userLiked ? colors.primary : '#374151' }}>
+              <span style={{ fontWeight: 600, color: userLiked ? colors.primary : 'var(--text-primary)' }}>
                 {story.helpfulCount || 0} {story.helpfulCount === 1 ? 'person found this helpful' : 'people found this helpful'}
               </span>
             </button>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#6b7280' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)' }}>
               <MessageCircle size={18} />
               <span style={{ fontSize: 14 }}>{story.commentCount || 0} comments</span>
             </div>
@@ -493,12 +490,12 @@ const StoryDetailPage = () => {
                 background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
-                color: '#6b7280',
+                color: 'var(--text-secondary)',
                 fontSize: 14,
                 transition: 'color 0.2s',
               }}
               onMouseEnter={e => e.currentTarget.style.color = '#22c55e'}
-              onMouseLeave={e => e.currentTarget.style.color = '#6b7280'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
             >
               <Share2 size={18} />
               Share
@@ -526,15 +523,15 @@ const StoryDetailPage = () => {
 
         {/* Comments Section */}
         <div className="sd-fade-in" style={{
-          background: '#fff',
+          background: 'var(--card-bg)',
           borderRadius: 'var(--radius-xl)',
-          border: '1.5px solid #f0fdf4',
+          border: '1.5px solid var(--border)',
           overflow: 'hidden',
           boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
         }}>
           <div style={{
             padding: '20px 28px',
-            borderBottom: '1.5px solid #f0fdf4',
+            borderBottom: '1.5px solid var(--border)',
             background: colors.lightBg,
           }}>
             <h3 style={{
@@ -551,8 +548,7 @@ const StoryDetailPage = () => {
             </h3>
           </div>
 
-          {/* Add Comment */}
-          <div style={{ padding: '24px 28px', borderBottom: '1px solid #f0fdf4' }}>
+          <div style={{ padding: '24px 28px', borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', gap: 12 }}>
               <div style={{
                 width: 40, height: 40, borderRadius: '50%',
@@ -571,16 +567,18 @@ const StoryDetailPage = () => {
                   rows="2"
                   style={{
                     width: '100%',
-                    border: '1.5px solid #e5e7eb',
+                    border: '1.5px solid var(--border)',
                     borderRadius: 'var(--radius-md)',
                     padding: '12px 16px',
                     fontSize: 14,
                     fontFamily: 'var(--font-body)',
                     resize: 'none',
                     transition: 'border-color 0.2s',
+                    background: 'var(--bg-primary)',
+                    color: 'var(--text-primary)',
                   }}
                   onFocus={e => e.currentTarget.style.borderColor = colors.primary}
-                  onBlur={e => e.currentTarget.style.borderColor = '#e5e7eb'}
+                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border)'}
                 />
                 <button
                   onClick={handleAddComment}
@@ -610,12 +608,11 @@ const StoryDetailPage = () => {
             </div>
           </div>
 
-          {/* Comments List */}
           <div style={{ padding: '24px 28px' }}>
             {comments.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 20px' }}>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>💬</div>
-                <p style={{ color: '#9ca3af', fontSize: 14 }}>No comments yet. Be the first to share your thoughts!</p>
+                <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>No comments yet. Be the first to share your thoughts!</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -628,24 +625,24 @@ const StoryDetailPage = () => {
                       display: 'flex', 
                       gap: 12,
                       paddingBottom: 16,
-                      borderBottom: idx !== comments.length - 1 ? '1px solid #f0fdf4' : 'none',
+                      borderBottom: idx !== comments.length - 1 ? '1px solid var(--border)' : 'none',
                     }}
                   >
                     <div style={{
                       width: 36, height: 36, borderRadius: '50%',
-                      background: '#f3f4f6',
+                      background: 'var(--bg-tertiary)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 16, fontWeight: 'bold', color: '#6b7280',
+                      fontSize: 16, fontWeight: 'bold', color: 'var(--text-secondary)',
                       flexShrink: 0,
                     }}>
                       {comment.userName?.charAt(0) || 'U'}
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: 600, color: '#374151', fontSize: 14 }}>{comment.userName}</span>
-                        <span style={{ fontSize: 11, color: '#9ca3af' }}>{formatDate(comment.createdAt)}</span>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>{comment.userName}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{formatDate(comment.createdAt)}</span>
                       </div>
-                      <p style={{ color: '#6b7280', fontSize: 14, lineHeight: 1.6 }}>{comment.comment}</p>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.6 }}>{comment.comment}</p>
                     </div>
                   </div>
                 ))}
@@ -663,7 +660,7 @@ const StoryDetailPage = () => {
           background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
         }}>
           <div style={{
-            background: '#fff',
+            background: 'var(--card-bg)',
             borderRadius: 'var(--radius-xl)',
             maxWidth: 400,
             width: '90%',
@@ -682,10 +679,10 @@ const StoryDetailPage = () => {
               fontFamily: 'var(--font-display)',
               fontWeight: 800,
               fontSize: 20,
-              color: '#1f2937',
+              color: 'var(--text-primary)',
               marginBottom: 8,
             }}>Delete Story?</h3>
-            <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 24 }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
               This action cannot be undone. All likes and comments will be permanently removed.
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
@@ -693,8 +690,8 @@ const StoryDetailPage = () => {
                 onClick={() => setShowDeleteConfirm(false)}
                 style={{
                   flex: 1, padding: '10px', borderRadius: 'var(--radius-full)',
-                  border: '1.5px solid #e5e7eb', background: '#fff',
-                  color: '#6b7280', fontWeight: 600, cursor: 'pointer',
+                  border: '1.5px solid var(--border)', background: 'var(--bg-primary)',
+                  color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer',
                   fontFamily: 'var(--font-display)',
                 }}
               >
