@@ -5,6 +5,8 @@ import {
   Play, Sparkles, ChevronRight, Award, Clock, Shield,
   Zap, Globe, MessageCircle, CheckCircle, Phone,
 } from 'lucide-react';
+import ThemeToggle from '../common/ThemeToggle';
+import { useTheme } from '../../context/ThemeContext';
 
 /* ─── Injected global styles ─────────────────────────────────────── */
 const GlobalStyles = () => (
@@ -13,36 +15,6 @@ const GlobalStyles = () => (
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    :root {
-      --green-50:  #f0fdf4;
-      --green-100: #dcfce7;
-      --green-200: #bbf7d0;
-      --green-300: #86efac;
-      --green-400: #4ade80;
-      --green-500: #22c55e;
-      --green-600: #16a34a;
-      --green-700: #15803d;
-      --green-800: #166534;
-      --green-900: #14532d;
-      --emerald-500: #10b981;
-      --amber-400: #fbbf24;
-      --amber-500: #f59e0b;
-      --orange-500: #f97316;
-      --red-500: #ef4444;
-      --blue-500: #3b82f6;
-      --purple-500: #8b5cf6;
-      --font-display: 'Baloo 2', 'Noto Sans Devanagari', sans-serif;
-      --font-body: 'Noto Sans', sans-serif;
-      --radius-sm: 8px;
-      --radius-md: 14px;
-      --radius-lg: 20px;
-      --radius-xl: 28px;
-      --radius-full: 9999px;
-    }
-
-    body { font-family: var(--font-body); }
-
-    /* scroll reveal */
     .reveal { opacity: 0; transform: translateY(32px); transition: opacity 0.7s ease, transform 0.7s ease; }
     .reveal.visible { opacity: 1; transform: none; }
     .reveal-left { opacity: 0; transform: translateX(-32px); transition: opacity 0.7s ease, transform 0.7s ease; }
@@ -50,7 +22,6 @@ const GlobalStyles = () => (
     .reveal-right { opacity: 0; transform: translateX(32px); transition: opacity 0.7s ease, transform 0.7s ease; }
     .reveal-right.visible { opacity: 1; transform: none; }
 
-    /* hero image ken-burns */
     @keyframes kenBurns {
       0%   { transform: scale(1.0) translate(0, 0); }
       50%  { transform: scale(1.08) translate(-1%, -1%); }
@@ -58,7 +29,6 @@ const GlobalStyles = () => (
     }
     .kb { animation: kenBurns 20s ease-in-out infinite; }
 
-    /* hero image crossfade */
     .hero-img {
       position: absolute; inset: 0;
       width: 100%; height: 100%; object-fit: cover;
@@ -66,14 +36,12 @@ const GlobalStyles = () => (
     }
     .hero-img.active { opacity: 1; }
 
-    /* float mic */
     @keyframes floatMic {
       0%, 100% { transform: translateY(0); }
       50%       { transform: translateY(-10px); }
     }
     .float-mic { animation: floatMic 3s ease-in-out infinite; }
 
-    /* pulse ring */
     @keyframes pulseRing {
       0%   { transform: scale(1); opacity: 0.6; }
       100% { transform: scale(1.7); opacity: 0; }
@@ -88,18 +56,15 @@ const GlobalStyles = () => (
     }
     .pulse-ring::after { animation-delay: 1s; }
 
-    /* typing cursor */
     @keyframes blink { 0%,100%{ opacity:1 } 50%{ opacity:0 } }
     .cursor { display:inline-block; width:2px; height:1em; background:#22c55e; margin-left:2px; vertical-align:middle; border-radius:2px; animation: blink 1s step-end infinite; }
 
-    /* scroll indicator */
     @keyframes scrollDown {
       0%   { transform: translateY(0); opacity:1; }
       100% { transform: translateY(10px); opacity:0; }
     }
     .scroll-dot { animation: scrollDown 1.5s ease-in-out infinite; }
 
-    /* badge shimmer */
     @keyframes shimmer {
       0%   { background-position: -200% center; }
       100% { background-position:  200% center; }
@@ -110,11 +75,9 @@ const GlobalStyles = () => (
       animation: shimmer 2.5s linear infinite;
     }
 
-    /* card hover lift */
     .card-lift { transition: transform 0.35s ease, box-shadow 0.35s ease; }
     .card-lift:hover { transform: translateY(-6px); box-shadow: 0 24px 60px rgba(0,0,0,0.12); }
 
-    /* step connector */
     .step-line {
       flex: 1;
       height: 2px;
@@ -125,25 +88,15 @@ const GlobalStyles = () => (
     }
     @media(min-width:768px){ .step-line { display: block; } }
 
-    /* language marquee */
     @keyframes marquee { 0%{ transform: translateX(0) } 100%{ transform: translateX(-50%) } }
     .marquee-inner { display: flex; animation: marquee 28s linear infinite; }
     .marquee-inner:hover { animation-play-state: paused; }
 
-    /* stat counter pulse on enter */
     @keyframes countUp { from { opacity:0; transform: scale(0.7); } to { opacity:1; transform: scale(1); } }
     .stat-card.visible .stat-num { animation: countUp 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-
-    /* wave divider */
-    .wave { display:block; width:100%; overflow:hidden; line-height:0; }
-    .wave svg { display:block; }
-
-    /* mobile menu open */
-    .nav-open { display: flex !important; }
   `}</style>
 );
 
-/* ─── Scroll reveal hook ─────────────────────────────────────────── */
 function useScrollReveal() {
   useEffect(() => {
     const els = document.querySelectorAll('.reveal, .reveal-left, .reveal-right');
@@ -156,7 +109,6 @@ function useScrollReveal() {
   }, []);
 }
 
-/* ─── Typing animation hook ──────────────────────────────────────── */
 function useTypingCycle(strings, speed = 70, pause = 2200) {
   const [display, setDisplay] = useState('');
   const [idx, setIdx] = useState(0);
@@ -192,7 +144,6 @@ function useTypingCycle(strings, speed = 70, pause = 2200) {
   return display;
 }
 
-/* ─── Language tag pill ──────────────────────────────────────────── */
 const LangPill = ({ lang, text, color }) => (
   <div style={{
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
@@ -205,7 +156,6 @@ const LangPill = ({ lang, text, color }) => (
   </div>
 );
 
-/* ─── Service Card Component ─────────────────────────────────────── */
 const ServiceCard = ({ icon: Icon, title, titleHi, description, bg, accent, light, img, stats, onClick }) => (
   <div
     onClick={onClick}
@@ -215,8 +165,8 @@ const ServiceCard = ({ icon: Icon, title, titleHi, description, bg, accent, ligh
       minWidth: 0,
       borderRadius: 'var(--radius-xl)',
       overflow: 'hidden',
-      background: bg,
-      border: `1.5px solid ${light}`,
+      background: 'var(--card-bg)',
+      border: `1.5px solid var(--border)`,
       cursor: 'pointer',
       transition: 'transform 0.35s ease, box-shadow 0.35s ease',
     }}
@@ -230,20 +180,20 @@ const ServiceCard = ({ icon: Icon, title, titleHi, description, bg, accent, ligh
     </div>
     <div style={{ padding: '20px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-        <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: '#14532d' }}>{title}</h3>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: 'var(--text-primary)' }}>{title}</h3>
         <span style={{ fontSize: 13, color: accent, fontFamily: 'var(--font-display)', fontWeight: 600 }}>{titleHi}</span>
       </div>
-      <p style={{ color: '#4b5563', fontSize: 13, lineHeight: 1.55, marginBottom: 12 }}>{description}</p>
-      <div style={{ display: 'inline-block', fontSize: 11, color: accent, fontWeight: 600, background: light, padding: '4px 12px', borderRadius: 'var(--radius-full)' }}>
+      <p style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.55, marginBottom: 12 }}>{description}</p>
+      <div style={{ display: 'inline-block', fontSize: 11, color: accent, fontWeight: 600, background: `${accent}20`, padding: '4px 12px', borderRadius: 'var(--radius-full)' }}>
         {stats}
       </div>
     </div>
   </div>
 );
 
-/* ─── Main Component ─────────────────────────────────────────────── */
 const HomePage = () => {
   const navigate = useNavigate();
+  const { isDarkMode } = useTheme();
 
   const heroImages = [
     'https://www.actionaidindia.org/wp-content/uploads/2021/01/The-story-of-114-Odisha-villages-Inside-Image.jpg',
@@ -281,10 +231,8 @@ const HomePage = () => {
       title: 'Healthcare',
       titleHi: 'स्वास्थ्य सेवा',
       description: 'Get health guidance, nearby hospital info, telemedicine support, and Ayushman Bharat scheme details.',
-      bg: 'linear-gradient(135deg,#fff1f2,#ffe4e6)',
       accent: '#e11d48',
-      light: '#fecdd3',
-      img: 'https://media.gettyimages.com/id/1500323507/photo/a-doctor-examining-a-young-pregnant-woman-as-part-of-a-medical-health-care-camp-in-a-village.jpg?s=612x612&w=gi&k=20&c=7gmaFqcK-dVWLoLuvKeGNnzE8Hdk6yJ5I1jVR1tyKR4=',
+      img: 'https://images.pexels.com/photos/5214958/pexels-photo-5214958.jpeg?auto=compress&w=600&h=350&fit=crop',
       stats: '24/7 emergency support',
       path: '/healthcare',
     },
@@ -294,10 +242,8 @@ const HomePage = () => {
       title: 'Agriculture',
       titleHi: 'कृषि सहायता',
       description: 'Weather forecasts, mandi prices, MSP rates, fertilizer info, and expert farming tips.',
-      bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)',
       accent: '#16a34a',
-      light: '#bbf7d0',
-      img: 'https://thumbs.dreamstime.com/b/indian-village-life-18326271.jpg',
+      img: 'https://images.pexels.com/photos/2132180/pexels-photo-2132180.jpeg?auto=compress&w=600&h=350&fit=crop',
       stats: '50K+ farmers helped',
       path: '/agriculture',
     },
@@ -307,10 +253,8 @@ const HomePage = () => {
       title: 'Education',
       titleHi: 'शिक्षा मार्गदर्शन',
       description: 'Find scholarships, government schools, free courses, digital learning resources, and career guidance.',
-      bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)',
       accent: '#2563eb',
-      light: '#bfdbfe',
-      img: 'https://akm-img-a-in.tosshub.com/indiatoday/images/story/202004/children-876543_1280__1__1.jpeg?size=690:388',
+      img: 'https://images.pexels.com/photos/8471844/pexels-photo-8471844.jpeg?auto=compress&w=600&h=350&fit=crop',
       stats: '100+ free courses',
       path: '/education',
     },
@@ -320,10 +264,8 @@ const HomePage = () => {
       title: 'Govt Schemes',
       titleHi: 'सरकारी योजनाएं',
       description: 'Discover PM-KISAN, Ayushman Bharat, Ration Card, Housing schemes, and 50+ welfare programs.',
-      bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)',
       accent: '#d97706',
-      light: '#fde68a',
-      img: 'https://img-cdn.publive.online/fit-in/640x430/filters:format(webp)/english-betterindia/media/post_attachments/uploads/2017/11/Children-eating-a-meal..jpg',
+      img: 'https://images.pexels.com/photos/8942991/pexels-photo-8942991.jpeg?auto=compress&w=600&h=350&fit=crop',
       stats: '50+ active schemes',
       path: '/schemes',
     },
@@ -356,17 +298,17 @@ const HomePage = () => {
   ];
 
   return (
-    <div style={{ fontFamily: 'var(--font-body)', background: '#fff', overflowX: 'hidden' }}>
+    <div style={{ fontFamily: 'var(--font-body)', background: 'var(--bg-primary)', overflowX: 'hidden', minHeight: '100vh' }}>
       <GlobalStyles />
+      
+      <ThemeToggle variant="floating" />
 
-      {/* ── HERO ──────────────────────────────────────────────────── */}
+      {/* HERO SECTION */}
       <section style={{ position: 'relative', height: '100vh', minHeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         {heroImages.map((src, i) => (
           <img key={i} src={src} alt="" className={`hero-img kb ${i === imgIdx ? 'active' : ''}`} />
         ))}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(0,0,0,0.75) 0%, rgba(0,30,0,0.55) 50%, rgba(0,0,0,0.7) 100%)' }} />
-        <div style={{ position: 'absolute', top: '10%', right: '5%', width: 320, height: 320, borderRadius: '50%', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)' }} />
-        <div style={{ position: 'absolute', bottom: '15%', left: '3%', width: 200, height: 200, borderRadius: '50%', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.12)' }} />
 
         <div style={{ position: 'relative', zIndex: 10, textAlign: 'center', padding: '0 24px', maxWidth: 800, margin: '0 auto' }}>
           <div style={{ position: 'relative', display: 'inline-block', marginBottom: 32 }} className="float-mic pulse-ring">
@@ -401,8 +343,6 @@ const HomePage = () => {
                 boxShadow: '0 8px 32px rgba(34,197,94,0.45)',
                 transition: 'transform 0.2s,box-shadow 0.2s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 14px 40px rgba(34,197,94,0.55)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 8px 32px rgba(34,197,94,0.45)'; }}
             >
               शुरू करें &nbsp;/ Get Started <Play size={18} />
             </button>
@@ -415,8 +355,6 @@ const HomePage = () => {
                 cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
                 transition: 'background 0.2s',
               }}
-              onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.2)'}
-              onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'}
             >
               Watch Demo <ArrowRight size={18} />
             </button>
@@ -442,7 +380,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ── LANGUAGE MARQUEE ─────────────────────────────────────── */}
+      {/* LANGUAGE MARQUEE */}
       <div style={{ background: '#f0fdf4', borderTop: '1px solid #bbf7d0', borderBottom: '1px solid #bbf7d0', padding: '18px 0', overflow: 'hidden' }}>
         <div className="marquee-inner" style={{ gap: 14 }}>
           {[...langPills, ...langPills, ...langPills, ...langPills].map((p, i) => (
@@ -451,22 +389,21 @@ const HomePage = () => {
         </div>
       </div>
 
-      {/* ── SERVICES SECTION (4 cards in one line, even spacing) ──── */}
-      <section style={{ padding: '96px 24px', background: '#fff' }}>
+      {/* SERVICES SECTION */}
+      <section style={{ padding: '96px 24px', background: 'var(--bg-primary)' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 60 }}>
             <span className="badge-shimmer reveal" style={{ display: 'inline-block', padding: '6px 18px', borderRadius: 'var(--radius-full)', fontSize: 13, fontWeight: 700, color: '#15803d', letterSpacing: '0.06em', marginBottom: 14 }}>
               OUR SERVICES
             </span>
-            <h2 className="reveal" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem,4vw,3rem)', fontWeight: 800, color: '#14532d', marginBottom: 14, lineHeight: 1.2 }}>
+            <h2 className="reveal" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem,4vw,3rem)', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 14, lineHeight: 1.2 }}>
               जो आपको चाहिए, बस एक टैप पे · What You Need, One Tap Away
             </h2>
-            <p className="reveal" style={{ color: '#6b7280', fontSize: 17, maxWidth: 580, margin: '0 auto' }}>
+            <p className="reveal" style={{ color: 'var(--text-secondary)', fontSize: 17, maxWidth: 580, margin: '0 auto' }}>
               Voice-powered help for farming, health, education and government schemes
             </p>
           </div>
 
-          {/* 4 cards in a single row with flex and even spacing */}
           <div className="reveal" style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
             {services.map((service) => (
               <ServiceCard
@@ -475,9 +412,9 @@ const HomePage = () => {
                 title={service.title}
                 titleHi={service.titleHi}
                 description={service.description}
-                bg={service.bg}
+                bg="var(--card-bg)"
                 accent={service.accent}
-                light={service.light}
+                light="var(--border)"
                 img={service.img}
                 stats={service.stats}
                 onClick={() => navigate(service.path)}
@@ -487,20 +424,17 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ── IMPACT STATS ─────────────────────────────────────────── */}
-      <section style={{ padding: '96px 24px', background: 'linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 100%)', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: -80, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'rgba(34,197,94,0.07)' }} />
-        <div style={{ position: 'absolute', bottom: -60, left: -60, width: 300, height: 300, borderRadius: '50%', background: 'rgba(16,185,129,0.07)' }} />
-
+      {/* IMPACT STATS */}
+      <section style={{ padding: '96px 24px', background: 'var(--bg-secondary)', position: 'relative', overflow: 'hidden' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <div style={{ textAlign: 'center', marginBottom: 56 }}>
             <span className="reveal" style={{ display: 'inline-block', padding: '6px 18px', borderRadius: 'var(--radius-full)', fontSize: 13, fontWeight: 700, color: '#15803d', background: '#bbf7d0', letterSpacing: '0.06em', marginBottom: 14 }}>
               📊 OUR IMPACT
             </span>
-            <h2 className="reveal" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.8rem,3.5vw,2.8rem)', fontWeight: 800, color: '#14532d', marginBottom: 12 }}>
+            <h2 className="reveal" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.8rem,3.5vw,2.8rem)', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>
               असली बदलाव · Real Change in Rural India
             </h2>
-            <p className="reveal" style={{ color: '#4b7c5e', fontSize: 17, maxWidth: 520, margin: '0 auto' }}>
+            <p className="reveal" style={{ color: 'var(--text-secondary)', fontSize: 17, maxWidth: 520, margin: '0 auto' }}>
               Measurable impact on the ground, one village at a time
             </p>
           </div>
@@ -510,13 +444,13 @@ const HomePage = () => {
               <div
                 key={i}
                 className={`reveal stat-card card-lift`}
-                style={{ transitionDelay: `${i*80}ms`, background: '#fff', borderRadius: 'var(--radius-lg)', padding: '28px 20px', textAlign: 'center', border: `1.5px solid ${s.bg}`, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
+                style={{ transitionDelay: `${i*80}ms`, background: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', padding: '28px 20px', textAlign: 'center', border: `1.5px solid var(--border)`, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
               >
                 <div style={{ width: 52, height: 52, borderRadius: 14, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
                   <s.icon size={24} color={s.color} />
                 </div>
-                <div className="stat-num" style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, color: '#14532d', marginBottom: 4 }}>{s.value}</div>
-                <p style={{ color: '#6b7280', fontSize: 13, lineHeight: 1.4 }}>{s.label}</p>
+                <div className="stat-num" style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>{s.value}</div>
+                <p style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.4 }}>{s.label}</p>
                 <p style={{ color: s.color, fontSize: 12, fontFamily: 'var(--font-display)', fontWeight: 600 }}>{s.labelHi}</p>
               </div>
             ))}
@@ -524,17 +458,17 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ─────────────────────────────────────────── */}
-      <section style={{ padding: '96px 24px', background: '#fff' }}>
+      {/* HOW IT WORKS */}
+      <section style={{ padding: '96px 24px', background: 'var(--bg-primary)' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 60 }}>
             <span className="reveal" style={{ display: 'inline-block', padding: '6px 18px', borderRadius: 'var(--radius-full)', fontSize: 13, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', letterSpacing: '0.06em', marginBottom: 14 }}>
               🚀 HOW IT WORKS
             </span>
-            <h2 className="reveal" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.8rem,3.5vw,2.8rem)', fontWeight: 800, color: '#1e3a5f', marginBottom: 12 }}>
+            <h2 className="reveal" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.8rem,3.5vw,2.8rem)', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>
               3 आसान कदम · 3 Simple Steps
             </h2>
-            <p className="reveal" style={{ color: '#6b7280', fontSize: 17, maxWidth: 480, margin: '0 auto' }}>
+            <p className="reveal" style={{ color: 'var(--text-secondary)', fontSize: 17, maxWidth: 480, margin: '0 auto' }}>
               No smartphone expertise needed. Even first-time users can get help in under 60 seconds.
             </p>
           </div>
@@ -551,9 +485,9 @@ const HomePage = () => {
                       {step.num.slice(1)}
                     </div>
                   </div>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, color: '#14532d', marginBottom: 4 }}>{step.label}</h3>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, color: 'var(--text-primary)', marginBottom: 4 }}>{step.label}</h3>
                   <p style={{ fontFamily: 'var(--font-display)', color: step.color, fontWeight: 600, fontSize: 15, marginBottom: 10 }}>{step.labelHi}</p>
-                  <p style={{ color: '#6b7280', fontSize: 14.5, lineHeight: 1.65 }}>{step.desc}</p>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: 14.5, lineHeight: 1.65 }}>{step.desc}</p>
                 </div>
                 {i < steps.length - 1 && (
                   <div className="step-line" style={{ alignSelf: 'center', marginBottom: 60 }} />
@@ -564,11 +498,8 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ── CTA ──────────────────────────────────────────────────── */}
+      {/* CTA SECTION */}
       <section style={{ padding: '100px 24px', background: 'linear-gradient(135deg,#14532d 0%,#166534 40%,#15803d 100%)', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: -100, left: -100, width: 500, height: 500, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
-        <div style={{ position: 'absolute', bottom: -80, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
-
         <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center', position: 'relative', zIndex: 1 }}>
           <div className="reveal" style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 28px' }}>
             <Sparkles size={34} color="#86efac" />
@@ -577,9 +508,6 @@ const HomePage = () => {
             अभी शुरू करें · Join the Movement
           </h2>
           <p className="reveal" style={{ color: '#86efac', fontSize: 18, marginBottom: 10 }}>
-            Thousands of farmers, students and families are already getting help.
-          </p>
-          <p className="reveal" style={{ color: 'rgba(255,255,255,0.6)', fontSize: 15, marginBottom: 40 }}>
             Thousands of farmers, students and families are already getting help.
           </p>
           <div className="reveal" style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 28 }}>
@@ -593,8 +521,6 @@ const HomePage = () => {
                 boxShadow: '0 8px 40px rgba(0,0,0,0.2)',
                 transition: 'transform 0.2s,box-shadow 0.2s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow='0 16px 50px rgba(0,0,0,0.3)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 8px 40px rgba(0,0,0,0.2)'; }}
             >
               Get Started Free <Sparkles size={20} />
             </button>
@@ -606,8 +532,6 @@ const HomePage = () => {
                 cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
                 transition: 'border-color 0.2s,background 0.2s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.7)'; e.currentTarget.style.background='rgba(255,255,255,0.08)'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.4)'; e.currentTarget.style.background='transparent'; }}
             >
               <Phone size={18} /> Contact Us
             </button>
