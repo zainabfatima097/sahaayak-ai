@@ -8,6 +8,7 @@ import {
 import ChatInterface from '../chat/ChatInterface';
 import ChatHistory from '../chat/ChatHistory';
 import { useUserContext } from '../../context/UserContext';
+import { useTheme } from '../../context/ThemeContext';
 
 /* ── Injected styles ────────────────────────────────────────────────── */
 const LayoutStyles = () => (
@@ -23,8 +24,8 @@ const LayoutStyles = () => (
     .cl-header-anim { animation: cl-fade-down 0.4s ease both; }
 
     .cl-nav-item { transition: all 0.2s ease; cursor: pointer; }
-    .cl-nav-item:hover { background: #f0fdf4 !important; transform: translateX(3px); }
-    .cl-nav-item.active { background: linear-gradient(135deg,#dcfce7,#f0fdf4) !important; box-shadow: 0 2px 12px rgba(22,163,74,0.12); }
+    .cl-nav-item:hover { background: var(--bg-secondary) !important; transform: translateX(3px); }
+    .cl-nav-item.active { background: linear-gradient(135deg, var(--bg-secondary), var(--border)) !important; box-shadow: 0 2px 12px rgba(34,197,94,0.12); }
 
     @keyframes dropdown-slide {
       from { opacity: 0; transform: translateY(-6px); }
@@ -33,7 +34,7 @@ const LayoutStyles = () => (
     .dropdown-animation { animation: dropdown-slide 0.2s ease-out forwards; }
 
     .cl-btn { transition: background 0.18s, color 0.18s; }
-    .cl-btn:hover { background: #f9fafb !important; }
+    .cl-btn:hover { background: var(--bg-secondary) !important; }
     .cl-btn-danger:hover { background: #fef2f2 !important; color: #dc2626 !important; }
 
     @keyframes cl-overlay { from{opacity:0} to{opacity:1} }
@@ -50,7 +51,7 @@ const LayoutStyles = () => (
     .cl-tooltip:hover .cl-tip { visibility:visible; opacity:1; }
 
     .cl-scroll::-webkit-scrollbar { width:4px; }
-    .cl-scroll::-webkit-scrollbar-thumb { background:#dcfce7; border-radius:8px; }
+    .cl-scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:8px; }
   `}</style>
 );
 
@@ -60,7 +61,7 @@ const MENU_ITEMS = [
   { id:'healthcare',  name:'Healthcare',  nameHi:'स्वास्थ्य', icon:Heart,  path:'/healthcare',  color:'#dc2626', lightBg:'#fee2e2', desc:'Health guidance' },
   { id:'education',   name:'Education',   nameHi:'शिक्षा',   icon:GraduationCap, path:'/education', color:'#1d4ed8', lightBg:'#dbeafe', desc:'Learning resources' },
   { id:'schemes',     name:'Govt Schemes',nameHi:'योजनाएं',  icon:Landmark, path:'/schemes',     color:'#b45309', lightBg:'#fef3c7', desc:'Welfare programs' },
-  { id:'stories', name:'Success Stories', nameHi:'सफलता की कहानियां', icon:MessageCircle, path:'/stories', color:'#7c3aed', lightBg:'#ede9fe', desc:'Real experiences' },
+  { id:'stories',     name:'Success Stories', nameHi:'सफलता की कहानियां', icon:MessageCircle, path:'/stories', color:'#7c3aed', lightBg:'#ede9fe', desc:'Real experiences' },
 ];
 
 const DOMAIN_COLORS = {
@@ -91,7 +92,6 @@ const DomainSection = ({
 
   return (
     <div style={{ marginBottom: 8 }}>
-      {/* Domain Button */}
       <button
         onClick={() => {
           if (isDomainActive) {
@@ -117,28 +117,27 @@ const DomainSection = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
           <div style={{
             width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-            background: isDomainActive ? item.lightBg : '#f3f4f6',
+            background: isDomainActive ? item.lightBg : 'var(--bg-secondary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <item.icon size={18} color={isDomainActive ? item.color : '#6b7280'} />
+            <item.icon size={18} color={isDomainActive ? item.color : 'var(--text-secondary)'} />
           </div>
 
           {isSidebarOpen && (
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 700, fontSize: 14, color: isDomainActive ? item.color : '#374151' }}>
+                <span style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 700, fontSize: 14, color: isDomainActive ? item.color : 'var(--text-primary)' }}>
                   {item.name}
                 </span>
-                <span style={{ fontSize: 11, color: isDomainActive ? item.color : '#9ca3af', fontFamily: "'Noto Sans Devanagari',sans-serif" }}>
+                <span style={{ fontSize: 11, color: isDomainActive ? item.color : 'var(--text-secondary)', fontFamily: "'Noto Sans Devanagari',sans-serif" }}>
                   {item.nameHi}
                 </span>
               </div>
-              <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>{item.desc}</p>
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 1 }}>{item.desc}</p>
             </div>
           )}
         </div>
 
-        {/* Chevron - only for active domain */}
         {isSidebarOpen && isDomainActive && (
           <ChevronDown
             size={16}
@@ -154,7 +153,6 @@ const DomainSection = ({
         {!isSidebarOpen && <span className="cl-tip">{item.name} · {item.nameHi}</span>}
       </button>
 
-      {/* Dropdown Content */}
       {isSidebarOpen && isDomainActive && isExpanded && (
         <div className="dropdown-animation" style={{ marginTop: 8, paddingLeft: 46 }}>
           <ChatHistory
@@ -173,27 +171,24 @@ const DomainSection = ({
 const ChatLayout = ({ children, domain = 'general' }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(null);
-  const [openDropdown, setOpenDropdown] = useState(null); // Track which dropdown is open
+  const [openDropdown, setOpenDropdown] = useState(null);
 
   const navigate = useNavigate();
   const location = useLocation();
   const { userContext, updateUserContext } = useUserContext();
+  const { isDarkMode, toggleTheme } = useTheme();
 
-  // Sync session from URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const sessionId = params.get('session');
     setCurrentSessionId(sessionId || null);
   }, [location.search]);
 
-  // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
-  // Auto-open dropdown for current domain
   useEffect(() => {
     const currentItem = MENU_ITEMS.find(item => location.pathname === item.path);
     if (currentItem) {
@@ -254,7 +249,7 @@ const ChatLayout = ({ children, domain = 'general' }) => {
   const SidebarNav = () => (
     <div className="cl-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 8px' }}>
       {isSidebarOpen && (
-        <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6, padding: '0 8px' }}>
+        <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6, padding: '0 8px' }}>
           Services
         </p>
       )}
@@ -281,7 +276,7 @@ const ChatLayout = ({ children, domain = 'general' }) => {
           onClick={handleNewChat}
           style={{
             width: '100%', marginTop: 16, padding: '10px 12px', borderRadius: 12,
-            background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)',
+            background: 'linear-gradient(135deg, var(--bg-secondary), var(--border))',
             border: '1.5px dashed #86efac',
             display: 'flex', alignItems: 'center', gap: 8,
             cursor: 'pointer', color: '#15803d', fontSize: 13,
@@ -295,16 +290,17 @@ const ChatLayout = ({ children, domain = 'general' }) => {
   );
 
   const BottomMenu = () => (
-    <div style={{ borderTop: '1px solid #f0fdf4', padding: '8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <button onClick={() => navigate('/profile')} className="cl-btn" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'transparent', color: '#6b7280', textAlign: 'left' }}>
+    <div style={{ borderTop: '1px solid var(--border)', padding: '8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <button onClick={() => navigate('/profile')} className="cl-btn" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'transparent', color: 'var(--text-secondary)', textAlign: 'left' }}>
         <User size={17} />
-        {isSidebarOpen && <span style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 600, fontSize: 13, color: '#374151' }}>Profile · प्रोफाइल</span>}
+        {isSidebarOpen && <span style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>Profile · प्रोफाइल</span>}
         {!isSidebarOpen && <span className="cl-tip">Profile</span>}
       </button>
       
-      <button onClick={() => { setIsDarkMode(v => !v); document.body.classList.toggle('dark'); }} className="cl-btn" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'transparent', color: '#6b7280', textAlign: 'left' }}>
+      {/* Theme Toggle Button */}
+      <button onClick={toggleTheme} className="cl-btn" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'transparent', color: 'var(--text-secondary)', textAlign: 'left' }}>
         {isDarkMode ? <Sun size={17} /> : <Moon size={17} />}
-        {isSidebarOpen && <span style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 600, fontSize: 13, color: '#374151' }}>{isDarkMode ? 'Light Mode' : 'Dark Mode'} · {isDarkMode ? 'हल्का' : 'डार्क'}</span>}
+        {isSidebarOpen && <span style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>{isDarkMode ? 'Light Mode' : 'Dark Mode'} · {isDarkMode ? 'हल्का' : 'डार्क'}</span>}
         {!isSidebarOpen && <span className="cl-tip">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>}
       </button>
       
@@ -317,14 +313,14 @@ const ChatLayout = ({ children, domain = 'general' }) => {
   );
 
   return (
-    <div className="cl-wrap" style={{ display: 'flex', height: '100vh', background: '#f9fafb', overflow: 'hidden' }}>
+    <div className="cl-wrap" style={{ display: 'flex', height: '100vh', background: 'var(--bg-primary)', overflow: 'hidden' }}>
       <LayoutStyles />
 
       {/* Desktop Sidebar */}
       <aside className="cl-sidebar-anim" style={{
         width: isSidebarOpen ? 280 : 68,
-        background: '#fff',
-        borderRight: '1.5px solid #f0fdf4',
+        background: 'var(--bg-primary)',
+        borderRight: '1.5px solid var(--border)',
         display: 'none',
         flexDirection: 'column',
         transition: 'width 0.4s cubic-bezier(0.4,0,0.2,1)',
@@ -332,10 +328,9 @@ const ChatLayout = ({ children, domain = 'general' }) => {
         zIndex: 20,
         overflow: 'hidden',
       }}>
-        {/* Sidebar header */}
         <div style={{
           padding: isSidebarOpen ? '18px 14px 14px' : '18px 10px 14px',
-          borderBottom: '1px solid #f0fdf4',
+          borderBottom: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
         }}>
           {isSidebarOpen ? (
@@ -349,20 +344,24 @@ const ChatLayout = ({ children, domain = 'general' }) => {
                 }}>
                   <Mic size={20} color="#fff" />
                 </div>
-                <div className="cl-pulse" style={{ position: 'absolute', bottom: 0, right: 0, width: 10, height: 10, borderRadius: '50%', background: '#22c55e', border: '2px solid #fff' }} />
+                <div className="cl-pulse" style={{ position: 'absolute', bottom: 0, right: 0, width: 10, height: 10, borderRadius: '50%', background: '#22c55e', border: '2px solid var(--bg-primary)' }} />
               </div>
               <div>
                 <div style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 800, fontSize: 16, color: '#14532d', lineHeight: 1.2 }}>Sahaayak AI</div>
-                <div style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.05em' }}>आपका मददगार</div>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>आपका मददगार</div>
               </div>
             </div>
           ) : (
-            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg,#22c55e,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: '50%',
+              background: 'linear-gradient(135deg,#22c55e,#10b981)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto',
+            }}>
               <Mic size={18} color="#fff" />
             </div>
           )}
 
-          <button onClick={() => setIsSidebarOpen(v => !v)} style={{ padding: 6, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: '#9ca3af', flexShrink: 0 }}>
+          <button onClick={() => setIsSidebarOpen(v => !v)} style={{ padding: 6, borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', flexShrink: 0 }}>
             {isSidebarOpen ? <X size={17} /> : <Menu size={17} />}
           </button>
         </div>
@@ -370,16 +369,27 @@ const ChatLayout = ({ children, domain = 'general' }) => {
         <SidebarNav />
         <BottomMenu />
 
-        {/* User card */}
         {isSidebarOpen && (
-          <div style={{ padding: '12px 14px', borderTop: '1px solid #f0fdf4' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: 'linear-gradient(135deg,#f0fdf4,#fff)', border: '1px solid #dcfce7' }}>
-              <div style={{ width: 34, height: 34, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg,#22c55e,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>👤</div>
+          <div style={{ padding: '12px 14px', borderTop: '1px solid var(--border)' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 12px', borderRadius: 12,
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border)',
+            }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                background: 'linear-gradient(135deg,#22c55e,#10b981)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+              }}>👤</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 700, fontSize: 13, color: '#14532d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <p style={{
+                  fontFamily: "'Baloo 2',sans-serif", fontWeight: 700, fontSize: 13, color: '#14532d',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
                   {userContext.name || 'Guest User'}
                 </p>
-                <p style={{ fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <p style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {userContext.language || 'Hindi'} · {userContext.occupation || 'Rural'}
                 </p>
               </div>
@@ -392,7 +402,7 @@ const ChatLayout = ({ children, domain = 'general' }) => {
       <style>{`.cl-wrap aside { display: flex !important; } @media(max-width:767px){ .cl-wrap aside { display: none !important; } }`}</style>
 
       {/* Mobile Menu Button */}
-      <button onClick={() => setIsMobileMenuOpen(v => !v)} className="mobile-ham" style={{ position: 'fixed', top: 14, left: 14, zIndex: 50, width: 40, height: 40, borderRadius: 10, background: '#fff', border: '1px solid #dcfce7', display: 'none', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.1)', cursor: 'pointer' }}>
+      <button onClick={() => setIsMobileMenuOpen(v => !v)} className="mobile-ham" style={{ position: 'fixed', top: 14, left: 14, zIndex: 50, width: 40, height: 40, borderRadius: 10, background: 'var(--bg-primary)', border: '1px solid var(--border)', display: 'none', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.1)', cursor: 'pointer' }}>
         {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
       </button>
       <style>{`@media(max-width:767px){ .mobile-ham { display: flex !important; } }`}</style>
@@ -400,14 +410,14 @@ const ChatLayout = ({ children, domain = 'general' }) => {
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div className="cl-overlay" onClick={() => setIsMobileMenuOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', zIndex: 40 }}>
-          <div className="cl-mobile-menu" onClick={e => e.stopPropagation()} style={{ width: 280, height: '100%', background: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '8px 0 32px rgba(0,0,0,0.15)' }}>
-            <div style={{ padding: '18px 14px', borderBottom: '1px solid #f0fdf4', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="cl-mobile-menu" onClick={e => e.stopPropagation()} style={{ width: 280, height: '100%', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column', boxShadow: '8px 0 32px rgba(0,0,0,0.15)' }}>
+            <div style={{ padding: '18px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg,#22c55e,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Mic size={18} color="#fff" />
               </div>
               <div>
                 <div style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 800, fontSize: 15, color: '#14532d' }}>Sahaayak AI</div>
-                <div style={{ fontSize: 10, color: '#9ca3af' }}>आपका मददगार</div>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>आपका मददगार</div>
               </div>
             </div>
 
@@ -415,12 +425,12 @@ const ChatLayout = ({ children, domain = 'general' }) => {
               {MENU_ITEMS.map(item => (
                 <div key={item.id}>
                   <button onClick={() => { handleNewChat(); navigate(item.path); setIsMobileMenuOpen(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, border: 'none', cursor: 'pointer', background: isActive(item.path) ? item.lightBg : 'transparent', textAlign: 'left' }}>
-                    <div style={{ width: 34, height: 34, borderRadius: 9, background: isActive(item.path) ? '#fff' : '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <item.icon size={17} color={isActive(item.path) ? item.color : '#6b7280'} />
+                    <div style={{ width: 34, height: 34, borderRadius: 9, background: isActive(item.path) ? '#fff' : 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <item.icon size={17} color={isActive(item.path) ? item.color : 'var(--text-secondary)'} />
                     </div>
                     <div>
-                      <div style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 700, fontSize: 14, color: isActive(item.path) ? item.color : '#374151' }}>{item.name} · {item.nameHi}</div>
-                      <p style={{ fontSize: 11, color: '#9ca3af' }}>{item.desc}</p>
+                      <div style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 700, fontSize: 14, color: isActive(item.path) ? item.color : 'var(--text-primary)' }}>{item.name} · {item.nameHi}</div>
+                      <p style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{item.desc}</p>
                     </div>
                   </button>
 
@@ -433,7 +443,7 @@ const ChatLayout = ({ children, domain = 'general' }) => {
               ))}
             </div>
 
-            <div style={{ padding: '10px 8px', borderTop: '1px solid #f0fdf4' }}>
+            <div style={{ padding: '10px 8px', borderTop: '1px solid var(--border)' }}>
               <button onClick={handleLogout} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10, border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontFamily: "'Baloo 2',sans-serif", fontWeight: 600, fontSize: 13 }}>
                 <LogOut size={16} /> Logout · लॉग आउट
               </button>
@@ -444,44 +454,72 @@ const ChatLayout = ({ children, domain = 'general' }) => {
 
       {/* Main Content */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-        {/* Chat Header */}
-        <header className="cl-header-anim" style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(16px)', borderBottom: '1.5px solid #f0fdf4', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0, boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+        <header className="cl-header-anim" style={{
+          background: 'var(--bg-primary)',
+          backdropFilter: 'blur(16px)',
+          borderBottom: '1.5px solid var(--border)',
+          padding: '14px 20px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          flexShrink: 0, boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: domColor.grad, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 14px ${domColor.primary}33` }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+              background: domColor.grad,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: `0 4px 14px ${domColor.primary}33`,
+            }}>
               <span style={{ fontSize: 22 }}>{DOMAIN_ICONS[domain]}</span>
             </div>
             <div style={{ minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                 <h1 style={{ fontFamily: "'Baloo 2',sans-serif", fontWeight: 800, fontSize: 18, color: '#14532d', lineHeight: 1.2, whiteSpace: 'nowrap' }}>{dtitle.hi}</h1>
-                <span style={{ fontSize: 13, color: '#9ca3af', whiteSpace: 'nowrap' }}>{dtitle.en}</span>
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{dtitle.en}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                 <span className="cl-pulse" style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block', flexShrink: 0 }} />
                 <span style={{ fontSize: 12, color: '#22c55e', fontWeight: 600 }}>Online</span>
-                <span style={{ fontSize: 12, color: '#d1d5db' }}>·</span>
-                <span style={{ fontSize: 12, color: '#9ca3af' }}>Ask in {userContext.language || 'Hindi'} or English</span>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>·</span>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Ask in {userContext.language || 'Hindi'} or English</span>
               </div>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <button onClick={handleNewChat} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${domColor.light}`, background: '#fff', color: domColor.primary, fontSize: 13, fontFamily: "'Baloo 2',sans-serif", fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={handleNewChat} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px', borderRadius: 10,
+              border: `1.5px solid ${domColor.light}`,
+              background: 'var(--bg-primary)', color: domColor.primary,
+              fontSize: 13, fontFamily: "'Baloo 2',sans-serif", fontWeight: 700,
+              cursor: 'pointer',
+            }}>
               <Plus size={15} />
               <span style={{ display: 'none' }} className="sm-inline">New Chat</span>
             </button>
             <style>{`@media(min-width:520px){ .sm-inline { display: inline !important; } }`}</style>
 
-            <button title="Chat History" style={{ width: 38, height: 38, borderRadius: 10, border: '1.5px solid #f0fdf4', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#9ca3af' }}>
+            <button title="Chat History" style={{
+              width: 38, height: 38, borderRadius: 10,
+              border: '1.5px solid var(--border)', background: 'var(--bg-primary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: 'var(--text-secondary)',
+            }}>
               <History size={17} />
             </button>
 
-            <div onClick={() => navigate('/profile')} style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#22c55e,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, cursor: 'pointer', boxShadow: '0 2px 10px rgba(34,197,94,0.3)' }}>
+            <div onClick={() => navigate('/profile')} style={{
+              width: 36, height: 36, borderRadius: '50%',
+              background: 'linear-gradient(135deg,#22c55e,#10b981)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16, cursor: 'pointer',
+              boxShadow: '0 2px 10px rgba(34,197,94,0.3)',
+            }}>
               👤
             </div>
           </div>
         </header>
 
-        {/* Chat Body */}
         <div style={{ flex: 1, overflow: 'hidden' }}>
           {renderChildren()}
         </div>
